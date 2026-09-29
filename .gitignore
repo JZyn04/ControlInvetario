@@ -4,6 +4,7 @@
 ## Get latest from https://github.com/github/gitignore/blob/main/VisualStudio.gitignore
 
 # Project-local secrets and editor files
+DOCUMENTACION_PROYECTO.md
 .env.*
 !/.env.example
 appsettings.Local.json
