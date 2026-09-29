@@ -4,6 +4,7 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>ControlInventario-back-20260928</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
