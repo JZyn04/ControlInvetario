@@ -9,6 +9,7 @@ const message = document.querySelector("#message");
 const tbody = document.querySelector("#products");
 const empty = document.querySelector("#empty");
 const cancelEdit = document.querySelector("#cancel-edit");
+const refresh = document.querySelector("#refresh");
 
 const fields = {
   id: document.querySelector("#product-id"),
@@ -21,15 +22,28 @@ const fields = {
 
 let products = [];
 
-async function loadProducts() {
-  try {
-    const response = await fetch(api);
-    if (!response.ok) throw new Error("No se pudo consultar el inventario.");
-    products = await response.json();
-    render();
-  } catch (error) {
-    setMessage(error.message, true);
+async function loadProducts({ initialLoad = false } = {}) {
+  const attempts = initialLoad ? 8 : 1;
+  let lastError;
+  refresh.disabled = true;
+
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    try {
+      const response = await fetch(api);
+      if (!response.ok) throw new Error("No se pudo consultar el inventario.");
+      products = await response.json();
+      render();
+      if (initialLoad) clearMessage();
+      refresh.disabled = false;
+      return;
+    } catch (error) {
+      lastError = error;
+      if (attempt < attempts) await wait(750);
+    }
   }
+
+  refresh.disabled = false;
+  setMessage(lastError?.message ?? "No se pudo consultar el inventario.", true);
 }
 
 function render() {
@@ -43,10 +57,12 @@ function render() {
       <td>${product.quantity}</td>
       <td>${product.minimumStock}</td>
       <td>${new Intl.NumberFormat("es-GT", { style: "currency", currency: "GTQ" }).format(product.unitPrice)}</td>
-      <td><span class="status ${product.lowStock ? "low" : "ok"}">${product.lowStock ? "Stock bajo" : "Disponible"}</span></td>
-      <td class="actions">
-        <button class="button secondary" data-edit="${product.id}">Editar</button>
-        <button class="button danger" data-delete="${product.id}">Eliminar</button>
+      <td><span class="badge text-bg-${product.lowStock ? "warning" : "success"}">${product.lowStock ? "Stock bajo" : "Disponible"}</span></td>
+      <td class="text-end">
+        <div class="d-inline-flex gap-2">
+          <button class="btn btn-outline-primary btn-sm" data-edit="${product.id}">Editar</button>
+          <button class="btn btn-outline-danger btn-sm" data-delete="${product.id}">Eliminar</button>
+        </div>
       </td>`;
     return row;
   }));
@@ -114,7 +130,16 @@ function resetForm() {
 
 function setMessage(text, isError = false) {
   message.textContent = text;
-  message.style.color = isError ? "#b42318" : "#0d4f66";
+  message.className = `alert alert-${isError ? "danger" : "success"} mt-3 mb-0`;
+}
+
+function clearMessage() {
+  message.textContent = "";
+  message.className = "alert d-none mt-3 mb-0";
+}
+
+function wait(milliseconds) {
+  return new Promise(resolve => setTimeout(resolve, milliseconds));
 }
 
 async function readError(response) {
@@ -130,4 +155,4 @@ function escapeHtml(value) {
 
 cancelEdit.addEventListener("click", resetForm);
 document.querySelector("#refresh").addEventListener("click", loadProducts);
-loadProducts();
+loadProducts({ initialLoad: true });
