@@ -1,0 +1,15 @@
+[
+  {
+    "Name": "Front y Back",
+    "Projects": [
+      {
+        "Path": "back\\back.csproj",
+        "Action": "Start"
+      },
+      {
+        "Path": "Front\\Front.csproj",
+        "Action": "Start"
+      }
+    ]
+  }
+]

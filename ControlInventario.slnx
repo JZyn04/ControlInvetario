@@ -1,3 +1,4 @@
 <Solution>
   <Project Path="back/back.csproj" />
+  <Project Path="Front/Front.csproj" />
 </Solution>

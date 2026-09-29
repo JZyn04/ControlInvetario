@@ -1,23 +1,20 @@
+using Microsoft.Extensions.FileProviders;
+
 var builder = WebApplication.CreateBuilder(args);
-
-// Add services to the container.
-
-builder.Services.AddControllers();
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-builder.Services.AddOpenApi();
-
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+var sharedWebRoot = Path.GetFullPath(
+    Path.Combine(app.Environment.ContentRootPath, "..", "back", "wwwroot"));
+
+if (!Directory.Exists(sharedWebRoot))
 {
-    app.MapOpenApi();
+    throw new DirectoryNotFoundException($"No se encontró el frontend en {sharedWebRoot}.");
 }
 
-app.UseHttpsRedirection();
-
-app.UseAuthorization();
-
-app.MapControllers();
+var files = new PhysicalFileProvider(sharedWebRoot);
+app.UseDefaultFiles(new DefaultFilesOptions { FileProvider = files });
+app.UseStaticFiles(new StaticFileOptions { FileProvider = files });
+app.MapFallback(async context =>
+    await context.Response.SendFileAsync(Path.Combine(sharedWebRoot, "index.html")));
 
 app.Run();

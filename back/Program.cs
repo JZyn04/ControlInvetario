@@ -14,17 +14,28 @@ if (string.IsNullOrWhiteSpace(configuredConnection))
 
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("LocalFrontend", policy =>
+        policy.WithOrigins("http://localhost:5070", "https://localhost:7219")
+            .AllowAnyHeader()
+            .AllowAnyMethod());
+});
 builder.Services.AddDbContext<InventoryDbContext>(options =>
     options.UseNpgsql(PostgresConnection.Normalize(configuredConnection)));
 
-var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
-builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
+var cloudRunPort = Environment.GetEnvironmentVariable("PORT");
+if (!string.IsNullOrWhiteSpace(cloudRunPort))
+{
+    builder.WebHost.UseUrls($"http://0.0.0.0:{cloudRunPort}");
+}
 
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+    app.UseCors("LocalFrontend");
 }
 
 app.UseDefaultFiles();

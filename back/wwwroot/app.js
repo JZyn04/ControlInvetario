@@ -1,4 +1,9 @@
-const api = "/api/products";
+const localApiByPort = {
+  "5070": "http://localhost:5279",
+  "7219": "https://localhost:7201"
+};
+const apiBaseUrl = localApiByPort[window.location.port] ?? window.location.origin;
+const api = `${apiBaseUrl}/api/products`;
 const form = document.querySelector("#product-form");
 const message = document.querySelector("#message");
 const tbody = document.querySelector("#products");
