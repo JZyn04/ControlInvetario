@@ -10,6 +10,7 @@ const fields = {
 let session = null;
 let csrfToken = null;
 let products = [];
+let users = [];
 let roles = [];
 let permissionCatalog = [];
 let viewVersion = 0;
@@ -79,13 +80,14 @@ function showAuth() {
   csrfToken = null;
   viewVersion++;
   products = [];
+  users = [];
   roles = [];
   tbody.replaceChildren();
   $("#users").replaceChildren();
   resetForm();
   $("#login-form").reset();
   $("#register-form").reset();
-  $("#user-form").reset();
+  resetUserForm();
   resetRoleForm();
   $("#session-bar").classList.add("hidden");
   $("#dashboard").classList.add("hidden");
@@ -106,6 +108,7 @@ async function showSession(current) {
   session = current;
   viewVersion++;
   products = [];
+  users = [];
   roles = [];
   tbody.replaceChildren();
   $("#users").replaceChildren();
@@ -116,7 +119,7 @@ async function showSession(current) {
   $("#change-company").classList.toggle("hidden", current.empresas.length < 2);
   $("#login-form").reset();
   $("#register-form").reset();
-  $("#user-form").reset();
+  resetUserForm();
   resetRoleForm();
   resetForm();
   clearMessage("message");
@@ -304,17 +307,20 @@ tbody.addEventListener("click", async event => {
 });
 
 async function loadUsers() {
+  if (!isAdmin()) return;
   const version = viewVersion;
   try {
-    const users = await request("usuarios");
+    const data = await request("usuarios");
     if (version !== viewVersion) return;
+    users = data;
     $("#users").replaceChildren(...users.map(user => {
       const row = document.createElement("tr");
       row.innerHTML = `<td>${escapeHtml(user.correo)}</td><td>${escapeHtml(user.rol.nombre)}</td>
         <td>${new Intl.DateTimeFormat("es-GT", { dateStyle: "short" }).format(new Date(user.creadoEnUtc))}</td>
-        <td><div class="d-flex gap-2"><select class="form-select form-select-sm" aria-label="Rol de ${escapeHtml(user.correo)}" data-user-role="${user.id}">
-          ${roles.map(rol => `<option value="${rol.id}" ${rol.id === user.rol.id ? "selected" : ""}>${escapeHtml(rol.nombre)} (${rol.esSistema ? "Sistema" : "Empresa"})</option>`).join("")}
-        </select><button type="button" class="btn btn-outline-primary btn-sm" data-assign="${user.id}">Guardar</button></div></td>`;
+        <td><div class="d-flex gap-2">
+          <button type="button" class="btn btn-outline-primary btn-sm" data-edit-user="${user.id}">Editar</button>
+          <button type="button" class="btn btn-outline-danger btn-sm" data-delete-user="${user.id}">Eliminar</button>
+        </div></td>`;
       return row;
     }));
   } catch (error) { if (version === viewVersion) handleError("user-message", error); }
@@ -322,15 +328,48 @@ async function loadUsers() {
 
 $("#user-form").addEventListener("submit", event => {
   event.preventDefault();
+  if (!isAdmin()) return;
+  const id = $("#user-id").value;
+  const original = users.find(user => user.id === Number(id));
+  const correo = $("#user-email").value.trim();
+  const contrasenia = $("#user-password").value;
+  const rolId = Number($("#user-role").value);
+  if (roles.find(rol => rol.id === rolId)?.esAdministrador && !original?.rol.esAdministrador &&
+      !confirm("Este usuario tendrá control total de esta empresa. ¿Asignar Administrador de empresa?")) return;
+  const ownAccount = Number(id) === session.usuario.id;
+  const credentialsChanged = contrasenia !== "" || correo.toUpperCase() !== original?.correo.toUpperCase();
+  const version = viewVersion;
   submitForm(event.currentTarget, "user-message", async () => {
-    await request("usuarios", { method: "POST", body: {
-      correo: $("#user-email").value.trim(), contrasenia: $("#user-password").value, rolId: Number($("#user-role").value)
+    await request(id ? `usuarios/${id}` : "usuarios", { method: id ? "PUT" : "POST", body: {
+      correo, contrasenia: contrasenia || null, rolId
     } });
-    $("#user-form").reset();
-    setMessage("user-message", "Usuario agregado.");
+    if (version !== viewVersion) return;
+    resetUserForm();
+    if (ownAccount && credentialsChanged) {
+      showAuth();
+      setMessage("auth-message", "Datos actualizados. Iniciá sesión nuevamente.");
+      return;
+    }
+    if (ownAccount) {
+      await showSession(await request("auth/me"));
+      if (!isAdmin()) return;
+      showTab("users");
+    }
     await loadUsers();
+    setMessage("user-message", id ? "Usuario actualizado." : "Usuario agregado.");
   });
 });
+
+function resetUserForm() {
+  $("#user-form").reset();
+  $("#user-id").value = "";
+  $("#user-form-title").textContent = "Agregar usuario";
+  $("#user-password-label").textContent = "Contraseña";
+  $("#user-password").required = true;
+  $("#user-submit").textContent = "Agregar";
+  $("#cancel-user-edit").classList.add("hidden");
+  $("#user-role").value = roles.find(rol => rol.esSistema && !rol.esAdministrador)?.id ?? "";
+}
 
 async function loadRoles() {
   const version = viewVersion;
@@ -419,27 +458,48 @@ $("#roles").addEventListener("click", async event => {
 });
 
 $("#users").addEventListener("click", async event => {
-  const button = event.target.closest("button[data-assign]");
+  if (!isAdmin()) return;
+  const button = event.target.closest("button");
   if (!button) return;
-  const rolId = Number($("#users").querySelector(`select[data-user-role="${button.dataset.assign}"]`).value);
-  const rol = roles.find(item => item.id === rolId);
-  if (rol?.esAdministrador && !confirm("Este usuario tendrá control total de esta empresa, incluidos usuarios y roles. ¿Asignar Administrador de empresa?")) return;
+  const id = Number(button.dataset.editUser ?? button.dataset.deleteUser);
+  const user = users.find(item => item.id === id);
+  if (!user) return;
+  if (button.dataset.editUser) {
+    $("#user-id").value = user.id;
+    $("#user-email").value = user.correo;
+    $("#user-role").value = user.rol.id;
+    $("#user-password").value = "";
+    $("#user-password").required = false;
+    $("#user-password-label").textContent = "Nueva contraseña (opcional)";
+    $("#user-form-title").textContent = "Editar usuario";
+    $("#user-submit").textContent = "Guardar cambios";
+    $("#cancel-user-edit").classList.remove("hidden");
+    clearMessage("user-message");
+    $("#user-form").scrollIntoView({ behavior: "smooth", block: "center" });
+    $("#user-email").focus({ preventScroll: true });
+    return;
+  }
+  if (!button.dataset.deleteUser || !confirm(`¿Eliminar la cuenta ${user.correo} de esta empresa?`)) return;
+  const ownAccount = id === session.usuario.id;
+  const version = viewVersion;
   button.disabled = true;
   clearMessage("user-message");
   try {
-    await request(`usuarios/${button.dataset.assign}/rol`, { method: "PUT", body: { rolId } });
-    if (Number(button.dataset.assign) === session.usuario.id) {
-      const current = await request("auth/me");
-      await showSession(current);
-      if (!isAdmin()) return;
-      showTab("users");
+    await request(`usuarios/${id}`, { method: "DELETE" });
+    if (version !== viewVersion) return;
+    if (ownAccount) {
+      showAuth();
+      setMessage("auth-message", "Tu cuenta fue eliminada de esta empresa.");
+      return;
     }
+    if (Number($("#user-id").value) === id) resetUserForm();
     await loadUsers();
-    setMessage("user-message", "Rol asignado.");
+    setMessage("user-message", "Usuario eliminado.");
   } catch (error) { handleError("user-message", error); }
   finally { button.disabled = false; }
 });
 
+$("#cancel-user-edit").addEventListener("click", () => { resetUserForm(); clearMessage("user-message"); });
 $("#cancel-role-edit").addEventListener("click", resetRoleForm);
 
 function resetForm() {
@@ -471,4 +531,7 @@ $("#users-tab").addEventListener("click", async () => { if (!isAdmin()) return; 
 $("#roles-tab").addEventListener("click", () => { if (!isAdmin()) return; showTab("roles"); loadRoles(); });
 $("#cancel-edit").addEventListener("click", resetForm);
 $("#refresh").addEventListener("click", () => { clearMessage("message"); loadProducts(); });
+$("#project-document-link").addEventListener("click", event => {
+  if (event.currentTarget.getAttribute("aria-disabled") === "true") event.preventDefault();
+});
 initialize();

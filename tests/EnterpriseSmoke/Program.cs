@@ -211,6 +211,127 @@ try
     var unused = await OkJson(ownerA.PostAsJsonAsync("/api/roles", Role("Temporal")));
     Check((await ownerA.DeleteAsync("/api/roles/" + unused.GetProperty("id").GetInt32())).StatusCode == HttpStatusCode.NoContent, "Se puede eliminar un rol empresarial sin usuarios");
 
+    // Edición y eliminación: únicamente administración, dentro de la misma empresa.
+    var editable = await OkJson(ownerA.PostAsJsonAsync("/api/usuarios", new { correo = "editar@example.test", contrasenia = "Original123!", rolId = operatorA }));
+    var editableId = editable.GetProperty("id").GetInt32();
+    await OkJson(ownerB.PostAsJsonAsync("/api/usuarios", new { correo = "editar@example.test", contrasenia = "Original123!", rolId = operatorB }));
+    using var editableSession = Client(baseUrl);
+    await Csrf(editableSession);
+    await OkJson(editableSession.PostAsJsonAsync("/api/auth/login", new { correo = "editar@example.test", contrasenia = "Original123!" }));
+    await Csrf(editableSession);
+    await OkJson(editableSession.PostAsJsonAsync("/api/auth/company", new { empresaId = empresaA }));
+    using var multiEdit = Client(baseUrl);
+    await Csrf(multiEdit);
+    await OkJson(multiEdit.PostAsJsonAsync("/api/auth/login", new { correo = "editar@example.test", contrasenia = "Original123!" }));
+    await Csrf(multiEdit);
+    await OkJson(multiEdit.PostAsJsonAsync("/api/auth/company", new { empresaId = empresaB }));
+    await Csrf(multiEdit);
+    Check((await employee.PutAsJsonAsync($"/api/usuarios/{editableId}", UserEdit("escalada@example.test", adminA))).StatusCode == HttpStatusCode.Forbidden,
+        "Usuario sin administración no puede editar correo, contraseña ni rol");
+    Check((await employee.DeleteAsync($"/api/usuarios/{editableId}")).StatusCode == HttpStatusCode.Forbidden,
+        "Usuario sin administración no puede eliminar cuentas");
+    Check((await ownerB.PutAsJsonAsync($"/api/usuarios/{editableId}", UserEdit("ajeno@example.test", operatorB))).StatusCode == HttpStatusCode.NotFound,
+        "Administrador no puede editar cuenta de otra empresa");
+    Check((await ownerB.DeleteAsync($"/api/usuarios/{editableId}")).StatusCode == HttpStatusCode.NotFound,
+        "Administrador no puede eliminar cuenta de otra empresa");
+    Check((await ownerA.PutAsJsonAsync("/api/usuarios/2147483647", UserEdit("ausente@example.test", operatorA))).StatusCode == HttpStatusCode.NotFound &&
+        (await ownerA.DeleteAsync("/api/usuarios/2147483647")).StatusCode == HttpStatusCode.NotFound,
+        "Edición y eliminación rechazan usuarios inexistentes");
+    ownerA.DefaultRequestHeaders.Remove("X-CSRF-TOKEN");
+    Check((await ownerA.PutAsJsonAsync($"/api/usuarios/{editableId}", UserEdit("editar@example.test", operatorA))).StatusCode == HttpStatusCode.BadRequest &&
+        (await ownerA.DeleteAsync($"/api/usuarios/{editableId}")).StatusCode == HttpStatusCode.BadRequest,
+        "Edición y eliminación requieren protección CSRF");
+    await Csrf(ownerA);
+    Check((await ownerA.PutAsJsonAsync($"/api/usuarios/{editableId}", UserEdit("no-es-correo", operatorA))).StatusCode == HttpStatusCode.BadRequest,
+        "Edición valida formato del correo");
+    Check((await ownerA.PutAsJsonAsync($"/api/usuarios/{editableId}", UserEdit("editar@example.test", operatorA, "123"))).StatusCode == HttpStatusCode.BadRequest &&
+        (await ownerA.PutAsJsonAsync($"/api/usuarios/{editableId}", UserEdit("editar@example.test", operatorA, new string('x', 129)))).StatusCode == HttpStatusCode.BadRequest &&
+        (await ownerA.PutAsJsonAsync($"/api/usuarios/{editableId}", UserEdit("editar@example.test", operatorA, "        "))).StatusCode == HttpStatusCode.BadRequest,
+        "Nueva contraseña valida longitud y rechaza solo espacios");
+    Check((await ownerA.PutAsJsonAsync($"/api/usuarios/{editableId}", UserEdit("editar@example.test", adminB))).StatusCode == HttpStatusCode.BadRequest,
+        "Edición rechaza rol de otra empresa");
+    var originalHash = await StoredHash(isolated, editableId);
+    Check((await ownerA.PutAsJsonAsync($"/api/usuarios/{editableId}", UserEdit("ADMIN@example.test", adminA, "Rechazado123!"))).StatusCode == HttpStatusCode.Conflict &&
+        originalHash == await StoredHash(isolated, editableId), "Correo duplicado rechaza toda la edición sin cambiar contraseña");
+    var updatedRole = await OkJson(ownerA.PutAsJsonAsync($"/api/usuarios/{editableId}", new {
+        correo = "editar@example.test", contrasenia = (string?)null, rolId = readOnlyId, empresaId = empresaB, esPrincipal = true }));
+    Check(updatedRole.GetProperty("rol").GetProperty("id").GetInt32() == readOnlyId &&
+        !updatedRole.GetProperty("rol").GetProperty("esAdministrador").GetBoolean(), "Editar usuario aplica el rol sin aceptar poder adicional enviado por el cliente");
+    Check(originalHash == await StoredHash(isolated, editableId), "Contraseña nula conserva exactamente el hash existente");
+    Check((await editableSession.GetAsync("/api/products")).StatusCode == HttpStatusCode.OK &&
+        (await editableSession.PostAsJsonAsync("/api/products", Product("EDIT-BLOCK", "No permitido"))).StatusCode == HttpStatusCode.Forbidden,
+        "Cambiar solo el rol conserva sesión y actualiza permisos inmediatamente");
+    await OkJson(ownerA.PutAsJsonAsync($"/api/usuarios/{editableId}", UserEdit("editar@example.test", operatorA, "")));
+    Check(originalHash == await StoredHash(isolated, editableId), "Contraseña vacía también conserva la actual");
+    var resetUser = await OkJson(ownerA.PutAsJsonAsync($"/api/usuarios/{editableId}", UserEdit("actualizado@example.test", readOnlyId, "Renovada123!")));
+    var resetHash = await StoredHash(isolated, editableId);
+    Check(resetUser.GetProperty("correo").GetString() == "actualizado@example.test" &&
+        resetUser.GetProperty("rol").GetProperty("id").GetInt32() == readOnlyId, "Administrador actualiza correo, contraseña y rol juntos");
+    var verifier = new PasswordHasher<Usuario>();
+    Check(resetHash != originalHash && verifier.VerifyHashedPassword(new Usuario(), resetHash, "Renovada123!") != PasswordVerificationResult.Failed &&
+        verifier.VerifyHashedPassword(new Usuario(), resetHash, "Original123!") == PasswordVerificationResult.Failed,
+        "Contraseña nueva se guarda como hash y reemplaza a la anterior");
+    Check(!resetUser.ToString().Contains("contrasenia", StringComparison.OrdinalIgnoreCase), "Edición nunca devuelve contraseña ni hash");
+    Check((await editableSession.GetAsync("/api/auth/me")).StatusCode == HttpStatusCode.Unauthorized,
+        "Cambiar credenciales invalida la sesión previa de esa cuenta");
+    Check((await multiEdit.PostAsJsonAsync("/api/auth/company", new { empresaId = empresaA })).StatusCode == HttpStatusCode.Forbidden &&
+        (await OkJson(multiEdit.GetAsync("/api/auth/me"))).GetProperty("empresas").GetArrayLength() == 1,
+        "Selector no permite reutilizar la verificación antigua de una cuenta editada");
+    Check((await multiEdit.GetAsync("/api/products")).StatusCode == HttpStatusCode.OK,
+        "Editar cuenta de A no invalida cuenta independiente con mismo correo en B");
+    using var updatedSession = Client(baseUrl);
+    await Csrf(updatedSession);
+    Check((await updatedSession.PostAsJsonAsync("/api/auth/login", new { correo = "actualizado@example.test", contrasenia = "Original123!" })).StatusCode == HttpStatusCode.Unauthorized,
+        "Contraseña anterior no inicia sesión en la cuenta editada");
+    var newLogin = await OkJson(updatedSession.PostAsJsonAsync("/api/auth/login", new { correo = "actualizado@example.test", contrasenia = "Renovada123!" }));
+    Check(newLogin.GetProperty("empresaActiva").GetProperty("id").GetInt32() == empresaA,
+        "Correo y contraseña nuevos permiten iniciar sesión en la empresa original");
+    Check((await ownerA.PutAsJsonAsync($"/api/usuarios/{ownerIdA}", UserEdit("admin@example.test", operatorA))).StatusCode == HttpStatusCode.Conflict,
+        "Edición completa tampoco puede quitar al último administrador");
+    Check((await ownerA.DeleteAsync($"/api/usuarios/{ownerIdA}")).StatusCode == HttpStatusCode.Conflict,
+        "No se puede eliminar al último administrador");
+    Check((await ownerA.DeleteAsync($"/api/usuarios/{editableId}")).StatusCode == HttpStatusCode.NoContent &&
+        !(await OkJson(ownerA.GetAsync("/api/usuarios"))).EnumerateArray().Any(user => user.GetProperty("id").GetInt32() == editableId),
+        "Administrador elimina cuenta y desaparece de su lista");
+    Check((await updatedSession.GetAsync("/api/products")).StatusCode == HttpStatusCode.Unauthorized,
+        "Cuenta eliminada pierde acceso con cookies anteriores");
+    Check((await updatedSession.PostAsJsonAsync("/api/auth/login", new { correo = "actualizado@example.test", contrasenia = "Renovada123!" })).StatusCode == HttpStatusCode.Unauthorized,
+        "Cuenta eliminada ya no puede iniciar sesión");
+    Check((await OkJson(ownerA.GetAsync("/api/products"))).GetArrayLength() == 1 &&
+        (await multiEdit.GetAsync("/api/products")).StatusCode == HttpStatusCode.OK,
+        "Eliminar un usuario conserva empresa, inventario y cuentas independientes");
+
+    // Cambios sobre la cuenta propia y borrados simultáneos conservan un administrador.
+    using var ownerC = Client(baseUrl);
+    await Csrf(ownerC);
+    var c = await OkJson(ownerC.PostAsJsonAsync("/api/auth/register", Registration("Empresa C", "AdminC123!")));
+    await Csrf(ownerC);
+    var ownerIdC = c.GetProperty("usuario").GetProperty("id").GetInt32();
+    var empresaC = c.GetProperty("empresaActiva").GetProperty("id").GetInt32();
+    var adminC = c.GetProperty("usuario").GetProperty("rol").GetProperty("id").GetInt32();
+    var delegateC = await OkJson(ownerC.PostAsJsonAsync("/api/usuarios", new { correo = "delegado-c@example.test", contrasenia = "DelegadoC123!", rolId = adminC }));
+    var delegateIdC = delegateC.GetProperty("id").GetInt32();
+    await OkJson(ownerC.PutAsJsonAsync($"/api/usuarios/{ownerIdC}", UserEdit("admin-c@example.test", adminC, "CambioC123!")));
+    Check((await ownerC.GetAsync("/api/auth/me")).StatusCode == HttpStatusCode.Unauthorized,
+        "Administrador que cambia sus propias credenciales debe iniciar sesión otra vez");
+    await Csrf(ownerC);
+    await OkJson(ownerC.PostAsJsonAsync("/api/auth/login", new { correo = "admin-c@example.test", contrasenia = "CambioC123!" }));
+    await Csrf(ownerC);
+    using var delegatedC = Client(baseUrl);
+    await Csrf(delegatedC);
+    await OkJson(delegatedC.PostAsJsonAsync("/api/auth/login", new { correo = "delegado-c@example.test", contrasenia = "DelegadoC123!" }));
+    await Csrf(delegatedC);
+    var concurrentDelete = await Task.WhenAll(ownerC.DeleteAsync($"/api/usuarios/{ownerIdC}"), delegatedC.DeleteAsync($"/api/usuarios/{delegateIdC}"));
+    Check(concurrentDelete.Count(response => response.StatusCode == HttpStatusCode.NoContent) == 1 &&
+        concurrentDelete.Count(response => response.StatusCode == HttpStatusCode.Conflict) == 1,
+        "Borrados simultáneos nunca dejan una empresa sin administrador");
+    var deletedClient = concurrentDelete[0].StatusCode == HttpStatusCode.NoContent ? ownerC : delegatedC;
+    var remainingClient = concurrentDelete[0].StatusCode == HttpStatusCode.NoContent ? delegatedC : ownerC;
+    Check((await deletedClient.GetAsync("/api/auth/me")).StatusCode == HttpStatusCode.Unauthorized &&
+        (await OkJson(remainingClient.GetAsync("/api/usuarios"))).GetArrayLength() == 1,
+        "Borrarse con otro administrador cierra la sesión y conserva la administración restante");
+    foreach (var response in concurrentDelete) response.Dispose();
+
     // Una segunda instancia comprueba migración idempotente y cookies entre instancias.
     var port2 = FreePort();
     StartServer(port2);
@@ -273,6 +394,7 @@ void StartServer(int port)
 static object Registration(string name, string password = "Admin123!", string? phone2 = null) => new { nombreEmpresa = name, correo = "admin@example.test", contrasenia = password, telefono = "5555-1234", telefonoOpcional = phone2 };
 static object Product(string code, string name, int? empresaId = null) => new { code, name, quantity = 20, minimumStock = 5, unitPrice = 7m, empresaId };
 static object Role(string nombre, params string[] permisos) => new { nombre, permisos };
+static object UserEdit(string correo, int rolId, string? contrasenia = null) => new { correo, rolId, contrasenia };
 static HttpClient Client(string url) => new(new HttpClientHandler { CookieContainer = new CookieContainer(), AllowAutoRedirect = false }) { BaseAddress = new Uri(url) };
 static async Task Csrf(HttpClient client)
 {
@@ -299,3 +421,9 @@ async Task Ready(HttpClient client)
 }
 static int FreePort() { var listener = new TcpListener(IPAddress.Loopback, 0); listener.Start(); var port = ((IPEndPoint)listener.LocalEndpoint).Port; listener.Stop(); return port; }
 static async Task Sql(NpgsqlConnection connection, string sql) { await using var command = new NpgsqlCommand(sql, connection); await command.ExecuteNonQueryAsync(); }
+static async Task<string> StoredHash(NpgsqlConnection connection, int usuarioId)
+{
+    await using var command = new NpgsqlCommand("SELECT \"ContraseniaHash\" FROM \"Usuario\" WHERE \"Id\" = @id", connection);
+    command.Parameters.AddWithValue("id", usuarioId);
+    return (string)(await command.ExecuteScalarAsync())!;
+}

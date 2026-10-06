@@ -62,8 +62,10 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         {
             var database = context.HttpContext.RequestServices.GetRequiredService<InventoryDbContext>();
             var id = context.Principal?.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (!int.TryParse(id, out var usuarioId) ||
-                !await database.Usuarios.AnyAsync(item => item.Id == usuarioId))
+            var usuario = int.TryParse(id, out var usuarioId)
+                ? await database.Usuarios.AsNoTracking().SingleOrDefaultAsync(item => item.Id == usuarioId)
+                : null;
+            if (usuario is null || !CredencialesUsuario.Verificada(context.Principal!, usuario))
             {
                 context.RejectPrincipal();
                 await context.HttpContext.SignOutAsync();

@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using back.Auth;
 using back.Contracts;
 using back.Data;
 using back.Models;
@@ -109,11 +110,12 @@ public sealed class AuthController(InventoryDbContext database, IPasswordHasher<
     }
 
     private int UsuarioId => int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-    private Task<List<Usuario>> AllowedAccounts(CancellationToken cancellationToken)
+    private async Task<List<Usuario>> AllowedAccounts(CancellationToken cancellationToken)
     {
         var ids = User.FindAll("CuentaPermitida").Select(claim => int.Parse(claim.Value)).ToArray();
-        return database.Usuarios.Include(item => item.Empresa).Include(item => item.Rol).Where(item => ids.Contains(item.Id))
-            .ToListAsync(cancellationToken);
+        var usuarios = await database.Usuarios.Include(item => item.Empresa).Include(item => item.Rol)
+            .Where(item => ids.Contains(item.Id)).ToListAsync(cancellationToken);
+        return usuarios.Where(item => CredencialesUsuario.Verificada(User, item)).ToList();
     }
 
     private Task SignIn(IReadOnlyList<Usuario> cuentas, Usuario? activa)
@@ -125,6 +127,7 @@ public sealed class AuthController(InventoryDbContext database, IPasswordHasher<
             new(ClaimTypes.Name, identity.Correo)
         };
         claims.AddRange(cuentas.Select(item => new Claim("CuentaPermitida", item.Id.ToString())));
+        claims.AddRange(cuentas.Select(CredencialesUsuario.CrearClaim));
         if (activa is not null)
         {
             claims.Add(new Claim("EmpresaId", activa.EmpresaId.ToString()));

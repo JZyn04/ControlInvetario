@@ -7,7 +7,7 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
   <link rel="stylesheet" href="/styles.css">
 </head>
-<body class="bg-body-tertiary">
+<body class="bg-body-tertiary d-flex flex-column min-vh-100">
   <nav class="navbar navbar-expand navbar-dark bg-primary shadow-sm">
     <div class="container">
       <span class="navbar-brand mb-0 h1">Control de inventario</span>
@@ -19,7 +19,7 @@
     </div>
   </nav>
 
-  <main class="container py-4 py-md-5">
+  <main class="container py-4 py-md-5 flex-grow-1">
     <p id="connecting" class="text-body-secondary text-center py-5" role="status">Conectando…</p>
     <section id="auth-panel" class="auth-panel mx-auto hidden">
       <div class="card shadow-sm">
@@ -161,17 +161,19 @@
 
       <section id="users-panel" class="hidden" role="tabpanel" aria-labelledby="users-tab">
         <div class="card shadow-sm mb-4">
-          <div class="card-header bg-white py-3">
-            <h2 class="h5 mb-1">Agregar usuario</h2>
+          <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+            <h2 id="user-form-title" class="h5 mb-0">Agregar usuario</h2>
+            <button id="cancel-user-edit" class="btn btn-outline-secondary btn-sm hidden" type="button">Cancelar edición</button>
           </div>
           <div class="card-body p-4">
             <form id="user-form" class="row g-3">
+              <input id="user-id" type="hidden">
               <div class="col-12 col-md-4">
                 <label class="form-label" for="user-email">Correo</label>
                 <input id="user-email" class="form-control" type="email" maxlength="254" autocomplete="off" required>
               </div>
               <div class="col-12 col-md-4">
-                <label class="form-label" for="user-password">Contraseña</label>
+                <label id="user-password-label" class="form-label" for="user-password">Contraseña</label>
                 <input id="user-password" class="form-control" type="password" minlength="8" maxlength="128" autocomplete="new-password" required>
                 <div class="form-text">Mínimo 8 caracteres.</div>
               </div>
@@ -180,7 +182,7 @@
                 <select id="user-role" class="form-select" required></select>
               </div>
               <div class="col-12">
-                <button class="btn btn-primary" type="submit">Agregar</button>
+                <button id="user-submit" class="btn btn-primary" type="submit">Agregar</button>
               </div>
             </form>
             <div id="user-message" class="alert d-none mt-3 mb-0" role="status" aria-live="polite"></div>
@@ -190,7 +192,7 @@
           <div class="card-header bg-white py-3"><h2 class="h5 mb-0">Usuarios de la empresa</h2></div>
           <div class="table-responsive">
             <table class="table align-middle mb-0">
-              <thead class="table-light"><tr><th scope="col">Correo</th><th scope="col">Rol</th><th scope="col">Registro</th><th scope="col">Cambiar rol</th></tr></thead>
+              <thead class="table-light"><tr><th scope="col">Correo</th><th scope="col">Rol</th><th scope="col">Registro</th><th scope="col">Acciones</th></tr></thead>
               <tbody id="users"></tbody>
             </table>
           </div>
@@ -234,6 +236,43 @@
     </div>
   </main>
 
+  <footer class="bg-white border-top py-3">
+    <nav class="container d-flex flex-wrap justify-content-center gap-4 small" aria-label="Información del proyecto">
+      <!-- Cuando esté el DOCX, agregá su URL y quitá aria-disabled y tabindex. -->
+      <a id="project-document-link" class="link-secondary" href="#" aria-disabled="true" tabindex="-1">Documento del proyecto</a>
+      <a class="link-primary" href="#participants-modal" data-bs-toggle="modal" data-bs-target="#participants-modal">Participantes</a>
+    </nav>
+  </footer>
+
+  <div class="modal fade" id="participants-modal" tabindex="-1" aria-labelledby="participants-title" aria-hidden="true">
+    <div class="modal-dialog modal-sm modal-dialog-centered modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 class="modal-title fs-5" id="participants-title">Participantes</h2>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body">
+          <ul class="list-unstyled mb-0">
+            <li>
+              <dl class="small mb-0">
+                <dt>Nombre</dt>
+                <dd>Julio Roberto Salguero Beteta</dd>
+                <dt>Carnet</dt>
+                <dd>0900-22-2026</dd>
+                <dt>Correo institucional</dt>
+                <dd class="text-break mb-0">jsalguerob3@miumg.edu.gt</dd>
+              </dl>
+            </li>
+          </ul>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cerrar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous" defer></script>
   <script src="/app.js" defer></script>
 </body>
 </html>

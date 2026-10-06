@@ -18,6 +18,19 @@ public sealed record CrearUsuarioRequest(
     [Required, MinLength(8), MaxLength(128)] string Contrasenia,
     [Range(1, int.MaxValue)] int RolId);
 
+public sealed record ActualizarUsuarioRequest(
+    [Required, EmailAddress, MaxLength(254)] string Correo,
+    [MaxLength(128)] string? Contrasenia,
+    [Range(1, int.MaxValue)] int RolId) : IValidatableObject
+{
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        if (!string.IsNullOrEmpty(Contrasenia) &&
+            (Contrasenia.Length < 8 || string.IsNullOrWhiteSpace(Contrasenia)))
+            yield return new ValidationResult("La contraseña debe tener al menos 8 caracteres.", [nameof(Contrasenia)]);
+    }
+}
+
 public sealed record SeleccionarEmpresaRequest([Range(1, int.MaxValue)] int EmpresaId);
 public sealed record UsuarioResponse(int Id, string Correo, RolResponse Rol, DateTime CreadoEnUtc)
 {
