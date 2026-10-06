@@ -5,6 +5,7 @@ namespace back.Models;
 public sealed class Product
 {
     public int Id { get; set; }
+    public int EmpresaId { get; set; }
 
     [Required, MaxLength(40)]
     public string Code { get; set; } = string.Empty;

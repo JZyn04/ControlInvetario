@@ -2,6 +2,16 @@ body {
   min-height: 100vh;
 }
 
+.auth-panel {
+  max-width: 540px;
+}
+
+@media (max-width: 575px) {
+  .navbar-brand {
+    font-size: 1rem;
+  }
+}
+
 .navbar-brand {
   font-weight: 600;
 }

@@ -11,21 +11,101 @@
   <nav class="navbar navbar-expand navbar-dark bg-primary shadow-sm">
     <div class="container">
       <span class="navbar-brand mb-0 h1">Control de inventario</span>
-      <span class="badge rounded-pill text-bg-light text-primary"><span id="product-count">0</span> productos</span>
+      <div id="session-bar" class="d-flex align-items-center flex-wrap gap-3 hidden">
+        <span id="session-email" class="text-white small"></span>
+        <button id="change-company" class="btn btn-outline-light btn-sm hidden" type="button">Cambiar empresa</button>
+        <button id="logout" class="btn btn-outline-light btn-sm" type="button">Cerrar sesión</button>
+      </div>
     </div>
   </nav>
 
   <main class="container py-4 py-md-5">
-    <div class="mb-4">
-      <h1 class="h3 mb-1">Inventario</h1>
-      <p class="text-body-secondary mb-0">Registrá, consultá y actualizá los productos disponibles.</p>
-    </div>
+    <p id="connecting" class="text-body-secondary text-center py-5" role="status">Conectando…</p>
+    <section id="auth-panel" class="auth-panel mx-auto hidden">
+      <div class="card shadow-sm">
+        <div class="card-body p-4">
+          <div id="login-panel">
+            <h1 class="h4 mb-2">Iniciar sesión</h1>
+            <form id="login-form">
+              <div class="mb-3">
+                <label class="form-label" for="login-email">Correo</label>
+                <input id="login-email" class="form-control" type="email" maxlength="254" autocomplete="username" required>
+              </div>
+              <div class="mb-4">
+                <label class="form-label" for="login-password">Contraseña</label>
+                <input id="login-password" class="form-control" type="password" maxlength="128" autocomplete="current-password" required>
+              </div>
+              <button class="btn btn-primary w-100" type="submit">Entrar</button>
+            </form>
+            <p class="small mt-3 mb-0 text-center">¿Tu empresa todavía no tiene cuenta? <button id="show-register" class="btn btn-link btn-sm p-0" type="button">Registrar empresa</button></p>
+          </div>
 
-    <section class="card shadow-sm border-0 mb-4">
+          <div id="register-panel" class="hidden">
+            <h1 class="h4 mb-2">Registrar empresa</h1>
+            <form id="register-form" class="row g-3">
+              <div class="col-12">
+                <label class="form-label" for="company-name">Nombre de la empresa</label>
+                <input id="company-name" class="form-control" maxlength="140" autocomplete="organization" required>
+              </div>
+              <div class="col-12">
+                <label class="form-label" for="register-email">Correo del usuario principal</label>
+                <input id="register-email" class="form-control" type="email" maxlength="254" autocomplete="username" required>
+              </div>
+              <div class="col-12">
+                <label class="form-label" for="register-password">Contraseña</label>
+                <input id="register-password" class="form-control" type="password" minlength="8" maxlength="128" autocomplete="new-password" required aria-describedby="register-password-help">
+                <div id="register-password-help" class="form-text">Usá al menos 8 caracteres.</div>
+              </div>
+              <div class="col-12 col-sm-6">
+                <label class="form-label" for="company-phone">Teléfono</label>
+                <input id="company-phone" class="form-control" type="tel" maxlength="25" pattern="\+?[0-9 \(\)\-]{7,25}" autocomplete="tel" required placeholder="5555-1234">
+              </div>
+              <div class="col-12 col-sm-6">
+                <label class="form-label" for="company-phone-optional">Otro teléfono <span class="text-body-secondary small">(opcional)</span></label>
+                <input id="company-phone-optional" class="form-control" type="tel" maxlength="25" pattern="\+?[0-9 \(\)\-]{7,25}" placeholder="5555-5678">
+              </div>
+              <div class="col-12">
+                <button class="btn btn-primary w-100" type="submit">Crear cuenta empresarial</button>
+              </div>
+            </form>
+            <p class="small mt-3 mb-0 text-center">¿Ya tenés cuenta? <button id="show-login" class="btn btn-link btn-sm p-0" type="button">Iniciar sesión</button></p>
+          </div>
+          <div id="auth-message" class="alert d-none mt-3 mb-0" role="status" aria-live="polite"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="company-panel" class="auth-panel mx-auto hidden">
+      <div class="card shadow-sm">
+        <div class="card-body p-4">
+          <h1 class="h4 mb-2">Elegí una empresa</h1>
+          <div id="company-list" class="list-group"></div>
+          <div id="company-message" class="alert d-none mt-3 mb-0" role="status" aria-live="polite"></div>
+        </div>
+      </div>
+    </section>
+
+    <div id="dashboard" class="hidden">
+      <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-4">
+        <div>
+          <h1 id="empresa-nombre" class="h3 mb-1"></h1>
+          <p id="empresa-contacto" class="text-body-secondary small mb-0"></p>
+          <p class="small mt-2 mb-0">Tu rol: <span id="session-role" class="fw-semibold"></span></p>
+        </div>
+        <span id="product-total" class="badge text-bg-secondary"><span id="product-count">0</span> productos</span>
+      </div>
+      <div class="nav nav-tabs mb-4" role="tablist" aria-label="Panel empresarial">
+        <button id="inventory-tab" class="nav-link active" type="button" role="tab" aria-selected="true" aria-controls="inventory-panel">Inventario</button>
+        <button id="users-tab" class="nav-link hidden" type="button" role="tab" aria-selected="false" aria-controls="users-panel">Usuarios</button>
+        <button id="roles-tab" class="nav-link hidden" type="button" role="tab" aria-selected="false" aria-controls="roles-panel">Roles y permisos</button>
+      </div>
+      <p id="no-access" class="alert alert-secondary hidden">Sin acceso al inventario.</p>
+      <div id="inventory-panel" role="tabpanel" aria-labelledby="inventory-tab">
+
+    <section id="product-editor" class="card shadow-sm border-0 mb-4">
       <div class="card-header bg-white border-bottom d-flex flex-column flex-sm-row align-items-sm-center justify-content-sm-between gap-2 py-3">
         <div>
           <h2 id="form-title" class="h5 mb-1">Nuevo producto</h2>
-          <p class="text-body-secondary small mb-0">Completá los datos para agregarlo al inventario.</p>
         </div>
         <button id="cancel-edit" class="btn btn-outline-secondary btn-sm hidden" type="button">Cancelar edición</button>
       </div>
@@ -64,7 +144,6 @@
       <div class="card-header bg-white border-bottom d-flex flex-column flex-sm-row align-items-sm-center justify-content-sm-between gap-2 py-3">
         <div>
           <h2 class="h5 mb-1">Productos registrados</h2>
-          <p class="text-body-secondary small mb-0">Listado actual del inventario.</p>
         </div>
         <button id="refresh" class="btn btn-outline-primary btn-sm" type="button">Actualizar</button>
       </div>
@@ -78,6 +157,81 @@
       </div>
       <p id="empty" class="text-body-secondary text-center py-4 mb-0 hidden">Todavía no hay productos. Agregá el primero desde el formulario.</p>
     </section>
+      </div>
+
+      <section id="users-panel" class="hidden" role="tabpanel" aria-labelledby="users-tab">
+        <div class="card shadow-sm mb-4">
+          <div class="card-header bg-white py-3">
+            <h2 class="h5 mb-1">Agregar usuario</h2>
+          </div>
+          <div class="card-body p-4">
+            <form id="user-form" class="row g-3">
+              <div class="col-12 col-md-4">
+                <label class="form-label" for="user-email">Correo</label>
+                <input id="user-email" class="form-control" type="email" maxlength="254" autocomplete="off" required>
+              </div>
+              <div class="col-12 col-md-4">
+                <label class="form-label" for="user-password">Contraseña</label>
+                <input id="user-password" class="form-control" type="password" minlength="8" maxlength="128" autocomplete="new-password" required>
+                <div class="form-text">Mínimo 8 caracteres.</div>
+              </div>
+              <div class="col-12 col-md-4">
+                <label class="form-label" for="user-role">Rol</label>
+                <select id="user-role" class="form-select" required></select>
+              </div>
+              <div class="col-12">
+                <button class="btn btn-primary" type="submit">Agregar</button>
+              </div>
+            </form>
+            <div id="user-message" class="alert d-none mt-3 mb-0" role="status" aria-live="polite"></div>
+          </div>
+        </div>
+        <div class="card shadow-sm">
+          <div class="card-header bg-white py-3"><h2 class="h5 mb-0">Usuarios de la empresa</h2></div>
+          <div class="table-responsive">
+            <table class="table align-middle mb-0">
+              <thead class="table-light"><tr><th scope="col">Correo</th><th scope="col">Rol</th><th scope="col">Registro</th><th scope="col">Cambiar rol</th></tr></thead>
+              <tbody id="users"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section id="roles-panel" class="hidden" role="tabpanel" aria-labelledby="roles-tab">
+        <div class="card shadow-sm mb-4">
+          <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+            <h2 id="role-form-title" class="h5 mb-0">Crear rol</h2>
+            <button id="cancel-role-edit" class="btn btn-outline-secondary btn-sm hidden" type="button">Cancelar edición</button>
+          </div>
+          <div class="card-body p-4">
+            <form id="role-form">
+              <input id="role-id" type="hidden">
+              <div class="mb-3">
+                <label class="form-label" for="role-name">Nombre del rol</label>
+                <input id="role-name" class="form-control" maxlength="80" required placeholder="Ej. Consulta de inventario">
+              </div>
+              <fieldset class="mb-3">
+                <legend class="fs-6">Permisos de inventario</legend>
+                <div id="role-permissions" class="d-flex flex-wrap gap-3"></div>
+              </fieldset>
+              <button class="btn btn-primary" type="submit">Guardar rol</button>
+            </form>
+            <div id="role-message" class="alert d-none mt-3 mb-0" role="status" aria-live="polite"></div>
+          </div>
+        </div>
+        <div class="card shadow-sm">
+          <div class="card-header bg-white py-3">
+            <h2 class="h5 mb-1">Roles de la empresa</h2>
+          </div>
+          <div class="table-responsive">
+            <table class="table align-middle mb-0">
+              <thead class="table-light"><tr><th scope="col">Rol</th><th scope="col">Tipo</th><th scope="col">Permisos</th><th scope="col">Acciones</th></tr></thead>
+              <tbody id="roles"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </div>
   </main>
 
   <script src="/app.js" defer></script>

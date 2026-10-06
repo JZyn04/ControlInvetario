@@ -1,9 +1,27 @@
 using Npgsql;
+using Microsoft.EntityFrameworkCore;
 
 namespace back.Data;
 
 public static class PostgresConnection
 {
+    public static void Configure(DbContextOptionsBuilder options, string value, bool direct = false)
+    {
+        var connection = direct ? Direct(value) : Normalize(value);
+        options.UseNpgsql(connection);
+        var schema = new NpgsqlConnectionStringBuilder(connection).SearchPath;
+        if (!string.IsNullOrEmpty(schema)) options.AddInterceptors(new SearchPathInterceptor(schema));
+    }
+
+    public static string Direct(string value)
+    {
+        var connection = new NpgsqlConnectionStringBuilder(Normalize(value));
+        var host = connection.Host ?? throw new InvalidOperationException("Falta el host de PostgreSQL.");
+        if (host.EndsWith(".neon.tech", StringComparison.OrdinalIgnoreCase))
+            connection.Host = host.Replace("-pooler.", ".", StringComparison.OrdinalIgnoreCase);
+        return connection.ConnectionString;
+    }
+
     public static string Normalize(string value)
     {
         if (!value.StartsWith("postgres://", StringComparison.OrdinalIgnoreCase)
