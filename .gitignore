@@ -10,6 +10,9 @@ DOCUMENTACION_PROYECTO.md
 appsettings.Local.json
 .idea/
 
+# Pruebas y comprobadores: se conservan solo en local
+/tests/
+
 # User-specific files
 *.rsuser
 *.suo
