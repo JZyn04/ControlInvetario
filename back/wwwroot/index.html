@@ -4,8 +4,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Control de Inventario</title>
+  <link rel="icon" type="image/svg+xml" sizes="any" href="/favicon.svg?v=09f6023ed54e">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
-  <link rel="stylesheet" href="/styles.css">
+  <link href="https://cdn.jsdelivr.net/npm/tom-select@2.4.3/dist/css/tom-select.bootstrap5.min.css" rel="stylesheet" integrity="sha384-oNaL7h8UJDHZ8k9XxysQRnqKxysB2lmlq7uU5Ic9CsOy89U4US8mT9pGYFf0ygyM" crossorigin="anonymous">
+  <link rel="stylesheet" href="/styles.css?v=c1a71fad7fbf">
 </head>
 <body class="bg-body-tertiary d-flex flex-column min-vh-100">
   <nav class="navbar navbar-expand navbar-dark bg-primary shadow-sm">
@@ -28,11 +30,11 @@
             <h1 class="h4 mb-2">Iniciar sesión</h1>
             <form id="login-form">
               <div class="mb-3">
-                <label class="form-label" for="login-email">Correo</label>
+                <label class="form-label" for="login-email">Correo *</label>
                 <input id="login-email" class="form-control" type="email" maxlength="254" autocomplete="username" required>
               </div>
               <div class="mb-4">
-                <label class="form-label" for="login-password">Contraseña</label>
+                <label class="form-label" for="login-password">Contraseña *</label>
                 <input id="login-password" class="form-control" type="password" maxlength="128" autocomplete="current-password" required>
               </div>
               <button class="btn btn-primary w-100" type="submit">Entrar</button>
@@ -44,20 +46,20 @@
             <h1 class="h4 mb-2">Registrar empresa</h1>
             <form id="register-form" class="row g-3">
               <div class="col-12">
-                <label class="form-label" for="company-name">Nombre de la empresa</label>
+                <label class="form-label" for="company-name">Nombre de la empresa *</label>
                 <input id="company-name" class="form-control" maxlength="140" autocomplete="organization" required>
               </div>
               <div class="col-12">
-                <label class="form-label" for="register-email">Correo del usuario principal</label>
+                <label class="form-label" for="register-email">Correo del usuario principal *</label>
                 <input id="register-email" class="form-control" type="email" maxlength="254" autocomplete="username" required>
               </div>
               <div class="col-12">
-                <label class="form-label" for="register-password">Contraseña</label>
+                <label class="form-label" for="register-password">Contraseña *</label>
                 <input id="register-password" class="form-control" type="password" minlength="8" maxlength="128" autocomplete="new-password" required aria-describedby="register-password-help">
                 <div id="register-password-help" class="form-text">Usá al menos 8 caracteres.</div>
               </div>
               <div class="col-12 col-sm-6">
-                <label class="form-label" for="company-phone">Teléfono</label>
+                <label class="form-label" for="company-phone">Teléfono de la empresa *</label>
                 <input id="company-phone" class="form-control" type="tel" maxlength="25" pattern="\+?[0-9 \(\)\-]{7,25}" autocomplete="tel" required placeholder="5555-1234">
               </div>
               <div class="col-12 col-sm-6">
@@ -89,100 +91,215 @@
       <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-4">
         <div>
           <h1 id="empresa-nombre" class="h3 mb-1"></h1>
-          <p id="empresa-contacto" class="text-body-secondary small mb-0"></p>
           <p class="small mt-2 mb-0">Tu rol: <span id="session-role" class="fw-semibold"></span></p>
         </div>
-        <span id="product-total" class="badge text-bg-secondary"><span id="product-count">0</span> productos</span>
       </div>
-      <div class="nav nav-tabs mb-4" role="tablist" aria-label="Panel empresarial">
+      <div class="nav nav-pills dashboard-menu gap-1 mb-4" role="tablist" aria-label="Panel empresarial">
         <button id="inventory-tab" class="nav-link active" type="button" role="tab" aria-selected="true" aria-controls="inventory-panel">Inventario</button>
+        <button id="tasks-tab" class="nav-link hidden" type="button" role="tab" aria-selected="false" aria-controls="tasks-panel">Tareas</button>
+        <button id="groups-tab" class="nav-link hidden" type="button" role="tab" aria-selected="false" aria-controls="groups-panel">Grupos</button>
+        <button id="profile-tab" class="nav-link" type="button" role="tab" aria-selected="false" aria-controls="profile-panel">Mi perfil</button>
         <button id="users-tab" class="nav-link hidden" type="button" role="tab" aria-selected="false" aria-controls="users-panel">Usuarios</button>
         <button id="roles-tab" class="nav-link hidden" type="button" role="tab" aria-selected="false" aria-controls="roles-panel">Roles y permisos</button>
+        <button id="audit-tab" class="nav-link hidden" type="button" role="tab" aria-selected="false" aria-controls="audit-panel">Auditoría</button>
       </div>
-      <p id="no-access" class="alert alert-secondary hidden">Sin acceso al inventario.</p>
       <div id="inventory-panel" role="tabpanel" aria-labelledby="inventory-tab">
+        <div id="message" class="alert d-none mb-3" role="status" aria-live="polite"></div>
+        <div id="inventory-settings" class="d-flex justify-content-end mb-3">
+          <button id="categories-open" class="btn btn-outline-secondary hidden" type="button">Configurar categorías</button>
+        </div>
+        <section id="warehouse-browser">
+          <div class="d-flex justify-content-between align-items-center gap-3 mb-3">
+            <h2 class="h5 mb-0">Bodegas</h2>
+            <div class="d-flex gap-2"><button id="deleted-open-all" class="btn btn-outline-secondary" type="button">Historial de eliminados</button><button id="warehouse-new" class="btn btn-primary hidden" type="button">Crear bodega</button></div>
+          </div>
+          <div id="warehouse-list" class="list-group"></div>
+          <div id="warehouse-empty" class="border rounded bg-body p-5 text-center hidden"><p class="mb-0">Todavía no hay bodegas.</p></div>
+        </section>
+        <section id="warehouse-workspace" class="hidden">
+          <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
+            <div class="d-flex align-items-center gap-3"><button id="warehouse-back" type="button" class="btn btn-outline-secondary btn-sm">← Bodegas</button><h2 id="warehouse-title" class="h5 mb-0"></h2></div>
+            <div class="d-flex flex-wrap gap-2"><button id="deleted-open" class="btn btn-outline-secondary" type="button">Historial de eliminados</button><button id="product-new" class="btn btn-primary hidden" type="button">Agregar producto</button></div>
+          </div>
 
-    <section id="product-editor" class="card shadow-sm border-0 mb-4">
-      <div class="card-header bg-white border-bottom d-flex flex-column flex-sm-row align-items-sm-center justify-content-sm-between gap-2 py-3">
+    <section id="product-editor" class="modal fade" tabindex="-1" aria-labelledby="form-title" aria-hidden="true">
+      <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable"><div class="modal-content">
+      <div class="modal-header">
         <div>
           <h2 id="form-title" class="h5 mb-1">Nuevo producto</h2>
         </div>
-        <button id="cancel-edit" class="btn btn-outline-secondary btn-sm hidden" type="button">Cancelar edición</button>
+        <button id="cancel-edit" class="btn-close" type="button" data-bs-dismiss="modal" aria-label="Cerrar"></button>
       </div>
-      <div class="card-body p-4">
+      <div class="modal-body">
         <form id="product-form" class="row g-3">
           <input id="product-id" type="hidden">
+          <input id="product-version" type="hidden">
           <div class="col-12 col-md-3">
-            <label class="form-label" for="code">Código</label>
+            <label class="form-label" for="code">Código *</label>
             <input id="code" class="form-control" maxlength="40" required placeholder="SKU-001">
           </div>
-          <div class="col-12 col-md-5">
-            <label class="form-label" for="name">Producto</label>
+          <div class="col-12 col-md-7">
+            <label class="form-label" for="name">Producto *</label>
             <input id="name" class="form-control" maxlength="120" required placeholder="Nombre del producto">
           </div>
           <div class="col-6 col-md-2">
-            <label class="form-label" for="quantity">Existencia</label>
-            <input id="quantity" class="form-control" type="number" min="0" required value="0">
-          </div>
-          <div class="col-6 col-md-2">
-            <label class="form-label" for="minimum-stock">Stock mínimo</label>
+            <label class="form-label" for="minimum-stock">Stock mínimo *</label>
             <input id="minimum-stock" class="form-control" type="number" min="0" required value="0">
           </div>
           <div class="col-12 col-md-3">
-            <label class="form-label" for="unit-price">Precio unitario</label>
+            <label class="form-label" for="unit-price">Precio unitario *</label>
             <input id="unit-price" class="form-control" type="number" min="0" step="0.01" required value="0">
+          </div>
+          <div class="col-12 d-flex align-items-end">
+            <div class="row g-3 mb-3 w-100">
+              <div class="col-md-4"><label for="product-unit" class="form-label">Unidad *</label><input id="product-unit" class="form-control" list="product-units" maxlength="30" required value="Unidad"><datalist id="product-units"><option value="Unidad"><option value="Libra"><option value="Kilogramo"><option value="Litro"><option value="Metro"><option value="Caja"></datalist></div>
+              <div class="col-md-4"><label for="product-fractions" class="form-label">Cantidades *</label><select id="product-fractions" class="form-select"><option value="false">Solo enteras</option><option value="true">Admitir fracciones (3 decimales)</option></select></div>
+              <div class="col-md-4"><label for="product-category" class="form-label">Categoría *</label><select id="product-category" class="form-select" required><option value="">Elegí una categoría</option></select></div>
+              <div id="product-warehouse-field" class="col-md-4"><label for="product-warehouse" class="form-label">Bodega *</label><select id="product-warehouse" class="form-select" required></select></div>
+            </div>
           </div>
           <div class="col-12 d-flex align-items-end">
             <button class="btn btn-primary px-4" type="submit">Guardar producto</button>
           </div>
         </form>
-        <div id="message" class="alert d-none mt-3 mb-0" role="status" aria-live="polite"></div>
+        <div id="product-message" class="alert d-none mt-3 mb-0" role="status" aria-live="polite"></div>
       </div>
+      </div></div>
     </section>
 
     <section class="card shadow-sm border-0">
       <div class="card-header bg-white border-bottom d-flex flex-column flex-sm-row align-items-sm-center justify-content-sm-between gap-2 py-3">
         <div>
-          <h2 class="h5 mb-1">Productos registrados</h2>
+          <h3 class="h6 mb-0">Productos</h3>
         </div>
-        <button id="refresh" class="btn btn-outline-primary btn-sm" type="button">Actualizar</button>
+        <div class="d-flex flex-wrap gap-2 align-items-center">
+          <label for="product-search" class="visually-hidden">Buscar producto</label><input id="product-search" class="form-control form-control-sm w-auto" type="search" placeholder="Código o nombre">
+          <label for="product-status" class="visually-hidden">Estado de productos</label><select id="product-status" class="form-select form-select-sm w-auto"><option value="activos">Todos los productos</option><option value="bajos">Stock bajo</option></select>
+          <label for="product-category-filter" class="visually-hidden">Filtrar categoría</label><select id="product-category-filter" class="form-select form-select-sm w-auto"><option value="">Todas las categorías</option></select>
+          <input id="product-warehouse-filter" type="hidden">
+          <button id="inventory-export" class="btn btn-outline-success btn-sm hidden" type="button">Exportar Excel</button>
+          <button id="refresh" class="btn btn-outline-primary btn-sm" type="button">Actualizar</button>
+        </div>
       </div>
       <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0">
+        <table class="table table-hover align-middle mb-0 products-table">
           <thead class="table-light">
-            <tr><th scope="col">Código</th><th scope="col">Producto</th><th scope="col">Existencia</th><th scope="col">Mínimo</th><th scope="col">Precio</th><th scope="col">Estado</th><th scope="col" class="text-end">Acciones</th></tr>
+            <tr><th scope="col">Código</th><th scope="col">Producto</th><th scope="col">Unidad</th><th scope="col">Categoría</th><th id="product-stock-heading" scope="col">Disponible</th><th scope="col">Precio</th><th scope="col">Acciones</th></tr>
           </thead>
           <tbody id="products"></tbody>
         </table>
       </div>
-      <p id="empty" class="text-body-secondary text-center py-4 mb-0 hidden">Todavía no hay productos. Agregá el primero desde el formulario.</p>
+      <p id="empty" class="text-body-secondary text-center py-4 mb-0 hidden">No hay productos que coincidan.</p>
+    </section>
+
+        </section>
+    <section id="stock-detail" class="modal fade" tabindex="-1" aria-labelledby="stock-title" aria-hidden="true">
+      <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable"><div class="modal-content">
+      <div class="modal-header"><h2 id="stock-title" class="modal-title fs-5">Movimientos y kárdex</h2><button id="stock-close" type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button></div>
+      <div class="modal-body">
+        <p id="stock-summary" class="fw-semibold"></p>
+        <div id="stock-message" class="alert d-none mb-3" role="status" aria-live="polite"></div>
+        <div class="nav nav-pills gap-1 mb-4" role="tablist" aria-label="Detalle del producto">
+          <button id="stock-operation-tab" class="nav-link active" type="button" data-bs-toggle="pill" data-bs-target="#stock-operation-pane" role="tab" aria-controls="stock-operation-pane" aria-selected="true">Movimiento</button>
+          <button id="stock-transfer-tab" class="nav-link" type="button" data-bs-toggle="pill" data-bs-target="#stock-transfer-pane" role="tab" aria-controls="stock-transfer-pane" aria-selected="false">Traslado</button>
+          <button id="stock-loans-tab" class="nav-link" type="button" data-bs-toggle="pill" data-bs-target="#stock-loans-pane" role="tab" aria-controls="stock-loans-pane" aria-selected="false">Préstamos</button>
+          <button id="stock-history-tab" class="nav-link" type="button" data-bs-toggle="pill" data-bs-target="#stock-history-pane" role="tab" aria-controls="stock-history-pane" aria-selected="false">Kárdex</button>
+        </div>
+        <div class="tab-content">
+        <div id="stock-operation-pane" class="tab-pane show active" role="tabpanel" aria-labelledby="stock-operation-tab">
+        <form id="stock-form" class="row g-3 mb-3">
+          <div class="col-md-4"><label for="stock-type" class="form-label">Movimiento *</label><select id="stock-type" class="form-select" required></select></div>
+          <div class="col-md-4"><label for="stock-warehouse" class="form-label">Bodega *</label><select id="stock-warehouse" class="form-select" required></select></div>
+          <div class="col-md-4"><label id="stock-quantity-label" for="stock-quantity" class="form-label">Cantidad *</label><input id="stock-quantity" class="form-control" type="number" min="0" required></div>
+          <div class="col-md-4"><label for="stock-reference" class="form-label">Referencia (opcional)</label><input id="stock-reference" class="form-control" maxlength="100"></div>
+          <div class="col-12"><label for="stock-reason" class="form-label">Motivo *</label><input id="stock-reason" class="form-control" maxlength="500" required></div>
+          <div id="stock-sale" class="col-12 hidden"><div class="form-check"><input id="stock-sale-detail" class="form-check-input" type="checkbox"><label for="stock-sale-detail" class="form-check-label">Agregar cliente y total a la venta</label></div>
+            <div id="stock-sale-fields" class="row g-3 mt-0 hidden"><div class="col-md-6"><label for="stock-client" class="form-label">Cliente *</label><input id="stock-client" class="form-control" maxlength="254"></div><div class="col-md-3"><label for="stock-price" class="form-label">Precio unitario *</label><input id="stock-price" class="form-control" type="number" min="0" max="9999999999" step="0.01"></div><div class="col-md-3"><span class="form-label d-block">Total</span><output id="stock-total" class="fw-semibold"></output></div></div>
+          </div>
+          <div id="stock-loan-fields" class="col-12 hidden"><div class="row g-3">
+            <div class="col-md-3"><label for="stock-recipient-type" class="form-label">Destinatario *</label><select id="stock-recipient-type" class="form-select"><option value="usuario">Usuario de la empresa</option><option value="externo">Persona externa</option></select></div>
+            <div id="stock-user-field" class="col-md-5"><label for="stock-recipient-user" class="form-label">Usuario *</label><select id="stock-recipient-user" class="form-select"></select></div>
+            <div id="stock-external-field" class="col-md-5 hidden"><label for="stock-recipient-external" class="form-label">Nombre o identificación *</label><input id="stock-recipient-external" class="form-control" maxlength="254"></div>
+            <div class="col-md-4"><label for="stock-due" class="form-label">Fecha prevista de devolución (opcional)</label><input id="stock-due" class="form-control" type="date"></div>
+          </div></div>
+          <div id="stock-return-field" class="col-12 hidden"><label for="stock-return-loan" class="form-label">Préstamo pendiente *</label><select id="stock-return-loan" class="form-select"></select></div>
+          <div class="col-12"><button id="stock-submit" class="btn btn-primary" type="submit">Registrar movimiento</button></div>
+        </form>
+        </div><div id="stock-transfer-pane" class="tab-pane" role="tabpanel" aria-labelledby="stock-transfer-tab">
+        <form id="transfer-form" class="row g-3 mb-3 hidden">
+          <h3 class="h6 mb-0">Trasladar entre bodegas</h3>
+          <div class="col-md-4"><label for="transfer-origin" class="form-label">Origen *</label><select id="transfer-origin" class="form-select" required></select></div>
+          <div class="col-md-4"><label for="transfer-destination" class="form-label">Destino *</label><select id="transfer-destination" class="form-select" required></select></div>
+          <div class="col-md-4"><label for="transfer-quantity" class="form-label">Cantidad *</label><input id="transfer-quantity" class="form-control" type="number" required></div>
+          <div class="col-12"><label for="transfer-product" class="form-label">Producto de destino *</label><select id="transfer-product" class="form-select" required></select><p id="transfer-empty" class="text-body-secondary small mt-2 mb-0 hidden">No hay un producto compatible en esta bodega. Crealo allí con la misma unidad y tipo de cantidad.</p></div>
+          <div class="col-md-8"><label for="transfer-reason" class="form-label">Motivo *</label><input id="transfer-reason" class="form-control" maxlength="500" required></div>
+          <div class="col-md-4"><label for="transfer-reference" class="form-label">Referencia (opcional)</label><input id="transfer-reference" class="form-control" maxlength="100"></div>
+          <div class="col-12"><button id="transfer-submit" class="btn btn-outline-primary" type="submit">Registrar traslado</button></div>
+        </form>
+        </div><div id="stock-loans-pane" class="tab-pane" role="tabpanel" aria-labelledby="stock-loans-tab">
+        <h3 class="h6">Préstamos</h3>
+        <div class="form-check mb-2"><input id="stock-loans-closed" class="form-check-input" type="checkbox"><label for="stock-loans-closed" class="form-check-label">Incluir devueltos</label></div>
+        <div class="table-responsive"><table class="table table-sm align-middle"><thead><tr><th>ID</th><th>Destinatario</th><th>Bodega de origen</th><th>Prestado</th><th>Devuelto</th><th>Pendiente</th><th>Fecha prevista</th><th></th></tr></thead><tbody id="stock-loans"></tbody></table></div>
+        <button id="stock-loans-more" class="d-none" type="button">Más préstamos</button>
+        </div><div id="stock-history-pane" class="tab-pane" role="tabpanel" aria-labelledby="stock-history-tab">
+        <div class="d-flex flex-wrap gap-2 align-items-center mt-4 mb-2"><h3 class="h6 mb-0">Kárdex</h3><label for="stock-history-type" class="visually-hidden">Filtrar kárdex</label><select id="stock-history-type" class="form-select form-select-sm w-auto"><option value="">Todos los movimientos</option><option value="Inicial">Saldo inicial</option><option value="Entrada">Entradas</option><option value="Venta">Ventas</option><option value="Consumo">Consumos</option><option value="Prestamo">Préstamos</option><option value="DevolucionPrestamo">Devoluciones de préstamos</option><option value="Devolucion">Otras devoluciones</option><option value="Conteo">Conteos físicos</option><option value="Ajuste">Ajustes de versión anterior</option><option value="TrasladoSalida">Traslados: salida</option><option value="TrasladoEntrada">Traslados: entrada</option></select></div>
+        <div class="d-flex flex-wrap gap-2 mb-2"><label for="stock-history-warehouse" class="visually-hidden">Bodega del kárdex</label><select id="stock-history-warehouse" class="form-select form-select-sm w-auto"><option value="">Todas las bodegas</option></select><label for="stock-export-from" class="visually-hidden">Exportar desde fecha</label><input id="stock-export-from" class="form-control form-control-sm w-auto" type="date" aria-label="Exportar desde fecha"><label for="stock-export-to" class="visually-hidden">Exportar hasta fecha</label><input id="stock-export-to" class="form-control form-control-sm w-auto" type="date" aria-label="Exportar hasta fecha"><button id="stock-export" class="btn btn-outline-success btn-sm hidden" type="button">Exportar kárdex Excel</button></div>
+        <div class="table-responsive"><table class="table table-sm align-middle"><thead><tr><th>Fecha</th><th>Tipo</th><th>Bodega</th><th>Anterior</th><th>Cambio</th><th>Disponible</th><th>Motivo / referencia</th><th>Autor</th><th>Venta / préstamo / traslado</th></tr></thead><tbody id="stock-history"></tbody></table></div>
+        <button id="stock-history-more" class="d-none" type="button">Más movimientos</button>
+        </div></div>
+      </div>
+      </div></div>
+    </section>
+    <section id="inventory-catalogs" class="modal fade" tabindex="-1" aria-labelledby="categories-title" aria-hidden="true">
+      <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable"><div class="modal-content">
+        <div class="modal-header"><h2 id="categories-title" class="modal-title fs-5">Categorías de la empresa</h2><button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="Cerrar"></button></div>
+        <div class="modal-body" id="category-manager">
+          <form id="category-form" class="row g-2 mb-4"><input id="category-id" type="hidden"><div class="col-12"><label for="category-name" class="form-label">Nombre *</label><input id="category-name" class="form-control" required maxlength="100"></div><div class="col-12 d-flex gap-2"><button class="btn btn-primary" type="submit">Guardar</button><button id="category-cancel" class="btn btn-outline-secondary" type="button">Cancelar edición</button></div></form>
+          <div id="catalog-message" class="alert d-none" role="status" aria-live="polite"></div>
+          <div class="table-responsive"><table class="table table-sm"><thead><tr><th>Nombre</th><th>Acciones</th></tr></thead><tbody id="category-list"></tbody></table></div>
+        </div>
+      </div></div>
+    </section>
+    <section id="deleted-dialog" class="modal fade" tabindex="-1" aria-labelledby="deleted-title" aria-hidden="true">
+      <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable"><div class="modal-content">
+        <div class="modal-header"><h2 id="deleted-title" class="modal-title fs-5">Productos eliminados</h2><button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="Cerrar"></button></div>
+        <div class="modal-body"><div id="deleted-message" class="alert d-none" role="status" aria-live="polite"></div><div class="table-responsive"><table class="table table-sm align-middle"><thead><tr><th>ID</th><th>Código / producto</th><th>Bodega</th><th>Eliminado</th><th></th></tr></thead><tbody id="deleted-list"></tbody></table></div><button id="deleted-more" class="d-none" type="button">Más productos</button></div>
+      </div></div>
+    </section>
+    <section id="warehouse-dialog" class="modal fade" tabindex="-1" aria-labelledby="warehouse-form-title" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable"><div class="modal-content" id="warehouse-manager">
+        <div class="modal-header"><h2 id="warehouse-form-title" class="modal-title fs-5">Crear bodega</h2><button id="warehouse-cancel" type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button></div>
+        <div class="modal-body"><form id="warehouse-form"><input id="warehouse-id" type="hidden"><label for="warehouse-name" class="form-label">Nombre *</label><input id="warehouse-name" class="form-control mb-3" required maxlength="100"><button class="btn btn-primary" type="submit">Guardar bodega</button></form><div id="warehouse-message" class="alert d-none mt-3 mb-0" role="status" aria-live="polite"></div></div>
+      </div></div>
     </section>
       </div>
 
       <section id="users-panel" class="hidden" role="tabpanel" aria-labelledby="users-tab">
         <div class="card shadow-sm mb-4">
           <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-            <h2 id="user-form-title" class="h5 mb-0">Agregar usuario</h2>
-            <button id="cancel-user-edit" class="btn btn-outline-secondary btn-sm hidden" type="button">Cancelar edición</button>
+            <h2 id="user-form-title" class="h5 mb-0">Crear usuario</h2>
           </div>
           <div class="card-body p-4">
             <form id="user-form" class="row g-3">
-              <input id="user-id" type="hidden">
               <div class="col-12 col-md-4">
-                <label class="form-label" for="user-email">Correo</label>
+                <label class="form-label" for="user-email">Correo *</label>
                 <input id="user-email" class="form-control" type="email" maxlength="254" autocomplete="off" required>
               </div>
               <div class="col-12 col-md-4">
-                <label id="user-password-label" class="form-label" for="user-password">Contraseña</label>
+                <label id="user-password-label" class="form-label" for="user-password">Contraseña *</label>
                 <input id="user-password" class="form-control" type="password" minlength="8" maxlength="128" autocomplete="new-password" required>
                 <div class="form-text">Mínimo 8 caracteres.</div>
               </div>
               <div class="col-12 col-md-4">
-                <label class="form-label" for="user-role">Rol</label>
+                <label class="form-label" for="user-role">Rol *</label>
                 <select id="user-role" class="form-select" required></select>
               </div>
+              <div class="col-12 col-md-4">
+                <label class="form-label" for="user-phone">Teléfono personal (opcional)</label>
+                <input id="user-phone" class="form-control" type="tel" maxlength="25" pattern="\+?[0-9 \(\)\-]{7,25}" autocomplete="off">
+              </div>
               <div class="col-12">
-                <button id="user-submit" class="btn btn-primary" type="submit">Agregar</button>
+                <button id="user-submit" class="btn btn-primary" type="submit">Crear usuario</button>
               </div>
             </form>
             <div id="user-message" class="alert d-none mt-3 mb-0" role="status" aria-live="polite"></div>
@@ -199,6 +316,100 @@
         </div>
       </section>
 
+      <section id="profile-panel" class="hidden" role="tabpanel" aria-labelledby="profile-tab">
+        <div class="card shadow-sm">
+          <div class="card-header bg-white py-3"><h2 class="h5 mb-0">Mi perfil</h2></div>
+          <div class="card-body p-4">
+            <dl class="row small mb-3">
+              <dt class="col-sm-3">Empresa</dt><dd id="profile-company" class="col-sm-9"></dd>
+              <dt class="col-sm-3">Rol</dt><dd id="profile-role" class="col-sm-9"></dd>
+              <dt class="col-sm-3">Registro</dt><dd id="profile-created" class="col-sm-9"></dd>
+            </dl>
+            <form id="profile-form" class="row g-3">
+              <div class="col-12 col-md-6">
+                <label class="form-label" for="profile-email">Correo *</label>
+                <input id="profile-email" class="form-control" type="email" maxlength="254" autocomplete="username" required>
+              </div>
+              <div class="col-12 col-md-6">
+                <label class="form-label" for="profile-phone">Teléfono personal (opcional)</label>
+                <input id="profile-phone" class="form-control" type="tel" maxlength="25" pattern="\+?[0-9 \(\)\-]{7,25}" autocomplete="tel">
+              </div>
+              <div id="profile-password-fields" class="col-12 hidden">
+                <div class="row g-3">
+                  <div class="col-12 col-md-6">
+                    <label class="form-label" for="profile-password">Nueva contraseña (opcional)</label>
+                    <input id="profile-password" class="form-control" type="password" minlength="8" maxlength="128" autocomplete="new-password" disabled>
+                  </div>
+                  <div class="col-12 col-md-6">
+                    <label id="profile-password-confirmation-label" class="form-label" for="profile-password-confirmation">Confirmar nueva contraseña</label>
+                    <input id="profile-password-confirmation" class="form-control" type="password" maxlength="128" autocomplete="new-password" disabled>
+                  </div>
+                </div>
+              </div>
+              <div class="col-12"><button class="btn btn-primary" type="submit">Guardar perfil</button></div>
+            </form>
+            <div id="profile-message" class="alert d-none mt-3 mb-0" role="status" aria-live="polite"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="groups-panel" class="hidden" role="tabpanel" aria-labelledby="groups-tab">
+        <div id="group-message" class="alert d-none mb-3" role="status" aria-live="polite"></div>
+        <div id="group-editor" class="card shadow-sm mb-4 hidden">
+          <div class="card-header bg-white d-flex justify-content-between align-items-center"><h2 id="group-form-title" class="h5 mb-0">Crear grupo</h2><button id="group-cancel" class="btn btn-outline-secondary btn-sm" type="button">Limpiar</button></div>
+          <div class="card-body">
+            <form id="group-form" class="row g-3">
+              <input id="group-id" type="hidden">
+              <div class="col-md-6"><label for="group-name" class="form-label">Nombre *</label><input id="group-name" class="form-control" maxlength="100" required></div>
+              <div class="col-md-6"><label for="group-supervisor" class="form-label">Supervisor *</label><select id="group-supervisor" class="form-select" required></select></div>
+              <div class="col-12"><button class="btn btn-primary" type="submit">Guardar grupo</button></div>
+            </form>
+          </div>
+        </div>
+        <div class="card shadow-sm mb-4">
+          <div class="card-header bg-white d-flex justify-content-between align-items-center"><h2 class="h5 mb-0">Grupos de trabajo</h2><button id="groups-refresh" class="btn btn-outline-secondary btn-sm" type="button">Actualizar</button></div>
+          <div class="table-responsive"><table class="table align-middle mb-0"><thead class="table-light"><tr><th scope="col">Grupo</th><th scope="col">Supervisor</th><th scope="col">Integrantes</th><th scope="col">Acciones</th></tr></thead><tbody id="groups-list"></tbody></table></div>
+        </div>
+      </section>
+
+      <section id="tasks-panel" class="hidden" role="tabpanel" aria-labelledby="tasks-tab">
+        <div id="task-message" class="alert d-none mb-3" role="status" aria-live="polite"></div>
+        <div id="task-editor" class="card shadow-sm mb-4 hidden">
+          <div class="card-header bg-white d-flex justify-content-between align-items-center"><h2 id="task-form-title" class="h5 mb-0">Crear tarea</h2><button id="task-cancel" class="btn btn-outline-secondary btn-sm" type="button">Limpiar</button></div>
+          <div class="card-body"><form id="task-form" class="row g-3">
+            <input id="task-id" type="hidden"><input id="task-version" type="hidden">
+            <div class="col-md-6"><label for="task-group" class="form-label">Grupo *</label><select id="task-group" class="form-select" required></select></div>
+            <div class="col-md-6"><label for="task-state" class="form-label">Estado *</label><select id="task-state" class="form-select" required></select></div>
+            <div class="col-12"><label for="task-title" class="form-label">Título *</label><input id="task-title" class="form-control" maxlength="140" required></div>
+            <div class="col-12"><label for="task-description" class="form-label">Descripción *</label><textarea id="task-description" class="form-control" maxlength="4000" rows="3" required></textarea></div>
+            <div class="col-md-6"><label for="task-assignee" class="form-label">Asignar a (opcional)</label><select id="task-assignee" class="form-select"><option value="">Sin asignar</option></select></div>
+            <div class="col-md-6 d-flex align-items-end"><div class="form-check mb-2"><input id="task-auto" class="form-check-input" type="checkbox"><label for="task-auto" class="form-check-label">Permitir autoasignación</label></div></div>
+            <div class="col-12"><button class="btn btn-primary" type="submit">Guardar tarea</button></div>
+          </form></div>
+        </div>
+        <div class="card shadow-sm mb-4">
+          <div class="card-header bg-white d-flex justify-content-between align-items-center"><h2 class="h5 mb-0">Tareas</h2><button id="tasks-refresh" class="btn btn-outline-secondary btn-sm" type="button">Actualizar</button></div>
+          <div class="table-responsive"><table class="table align-middle mb-0"><thead class="table-light"><tr><th scope="col">Título</th><th scope="col">Grupo</th><th scope="col">Asignada a</th><th scope="col">Estado</th><th scope="col">Acciones</th></tr></thead><tbody id="tasks-list"></tbody></table></div>
+        </div>
+      </section>
+
+      <section id="audit-panel" class="hidden" role="tabpanel" aria-labelledby="audit-tab">
+        <div id="audit-message" class="alert d-none mb-3" role="status" aria-live="polite"></div>
+        <div class="card shadow-sm">
+          <div class="card-header bg-white d-flex justify-content-between align-items-center"><h2 class="h5 mb-0">Auditoría de la empresa</h2><button id="audit-refresh" class="btn btn-outline-secondary btn-sm" type="button">Actualizar</button></div>
+          <div class="card-body border-bottom">
+            <form id="audit-filters" class="row g-3 align-items-end">
+              <div class="col-md-4"><label for="audit-entity" class="form-label">Tipo de registro</label><select id="audit-entity" class="form-select"><option value="">Todos</option><option value="Producto">Productos</option><option value="Movimiento">Movimientos de inventario</option><option value="Prestamo">Préstamos</option><option value="Categoria">Categorías</option><option value="Bodega">Bodegas</option><option value="Usuario">Usuarios</option><option value="Rol">Roles</option><option value="Empresa">Empresa</option><option value="Grupo">Grupos</option><option value="Integrante">Integrantes de grupos</option><option value="Estado">Estados de tareas</option><option value="Tarea">Tareas</option><option value="Nota">Notas</option></select></div>
+              <div class="col-md-4"><label for="audit-record-id" class="form-label">ID del registro</label><input id="audit-record-id" class="form-control" type="text" maxlength="80" disabled></div>
+              <div class="col-md-4"><label for="audit-action" class="form-label">Acción</label><select id="audit-action" class="form-select"><option value="">Todas</option><option value="Creado">Creación</option><option value="Editado">Edición</option><option value="Eliminado">Eliminación</option></select></div>
+              <div class="col-12 d-flex gap-2"><button class="btn btn-primary" type="submit">Filtrar</button><button id="audit-clear" class="btn btn-outline-secondary" type="button">Limpiar filtros</button></div>
+            </form>
+          </div>
+          <div class="table-responsive"><table class="table align-middle mb-0"><thead class="table-light"><tr><th scope="col">Fecha</th><th scope="col">Usuario</th><th scope="col">Acción</th><th scope="col">Registro</th><th scope="col">Detalle</th><th scope="col">Historial</th></tr></thead><tbody id="audit-list"></tbody></table></div>
+          <button id="audit-more" class="d-none" type="button">Cargar más</button>
+        </div>
+      </section>
+
       <section id="roles-panel" class="hidden" role="tabpanel" aria-labelledby="roles-tab">
         <div class="card shadow-sm mb-4">
           <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
@@ -209,12 +420,16 @@
             <form id="role-form">
               <input id="role-id" type="hidden">
               <div class="mb-3">
-                <label class="form-label" for="role-name">Nombre del rol</label>
+                <label class="form-label" for="role-name">Nombre del rol *</label>
                 <input id="role-name" class="form-control" maxlength="80" required placeholder="Ej. Consulta de inventario">
               </div>
               <fieldset class="mb-3">
-                <legend class="fs-6">Permisos de inventario</legend>
-                <div id="role-permissions" class="d-flex flex-wrap gap-3"></div>
+                <legend class="fs-6">Permisos</legend>
+                <div class="d-flex flex-wrap align-items-end gap-2 mb-3">
+                  <div class="flex-grow-1"><label for="role-permission-select" class="form-label">Elegí un permiso</label><select id="role-permission-select" class="form-select"><option value="">Seleccioná un permiso</option></select></div>
+                  <button id="role-permission-add" class="btn btn-outline-primary" type="button" disabled>Agregar permiso</button>
+                </div>
+                <div id="role-permissions" class="d-flex flex-wrap gap-2" aria-live="polite"></div>
               </fieldset>
               <button class="btn btn-primary" type="submit">Guardar rol</button>
             </form>
@@ -235,6 +450,162 @@
       </section>
     </div>
   </main>
+
+  <div class="modal fade" id="user-profile-modal" tabindex="-1" aria-labelledby="user-profile-title" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 id="user-profile-title" class="modal-title fs-5" tabindex="-1">Perfil de usuario</h2>
+          <button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body">
+          <div id="user-profile-message" class="alert d-none mb-3" role="status" aria-live="polite"></div>
+          <p id="user-profile-loading" class="text-secondary hidden" role="status">Cargando perfil…</p>
+          <div id="user-profile-content" class="hidden">
+            <div class="user-profile-hero mb-4">
+              <span id="user-profile-avatar" class="user-profile-avatar" aria-hidden="true"></span>
+              <div class="user-profile-identity">
+                <h3 id="user-profile-email" class="user-profile-email"></h3>
+                <p id="user-profile-role" class="user-profile-role mb-3"></p>
+                <dl class="user-profile-meta mb-0">
+                  <div><dt>Empresa</dt><dd id="user-profile-company"></dd></div>
+                  <div><dt>ID de usuario</dt><dd id="user-profile-id"></dd></div>
+                </dl>
+              </div>
+            </div>
+            <div id="user-profile-summary">
+              <div class="row g-3">
+                <section class="col-12 col-md-6" aria-labelledby="user-profile-data-title">
+                  <div class="user-profile-section h-100">
+                    <h3 id="user-profile-data-title" class="user-profile-section-title">
+                      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M16 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0Z"/></svg>
+                      Datos de cuenta
+                    </h3>
+                    <dl class="user-profile-details mb-0">
+                      <div><dt>Teléfono personal</dt><dd id="user-profile-phone"></dd></div>
+                      <div><dt>Fecha de registro</dt><dd id="user-profile-created"></dd></div>
+                      <div><dt>Contraseña</dt><dd><span class="user-profile-password" aria-label="Contraseña oculta">••••••••</span></dd></div>
+                    </dl>
+                  </div>
+                </section>
+                <section class="col-12 col-md-6" aria-labelledby="user-profile-access-title">
+                  <div class="user-profile-section h-100">
+                    <h3 id="user-profile-access-title" class="user-profile-section-title">
+                      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 8 4v5c0 5-8 9-8 9s-8-4-8-9V7l8-4Z"/><path d="m8 12 3 3 5-6"/></svg>
+                      Permisos del rol
+                    </h3>
+                    <ul id="user-profile-permissions" class="user-profile-permissions mb-0"></ul>
+                  </div>
+                </section>
+              </div>
+            </div>
+            <form id="user-profile-form" class="row g-3 hidden">
+              <h3 class="col-12 h6 mb-0">Datos de cuenta</h3>
+              <div class="col-12 col-md-6">
+                <label class="form-label" for="account-email">Correo *</label>
+                <input id="account-email" class="form-control" type="email" maxlength="254" autocomplete="off" required disabled>
+              </div>
+              <div class="col-12 col-md-6">
+                <label class="form-label" for="account-phone">Teléfono personal (opcional)</label>
+                <input id="account-phone" class="form-control" type="tel" maxlength="25" pattern="\+?[0-9 \(\)\-]{7,25}" autocomplete="off" disabled>
+              </div>
+              <div class="col-12">
+                <label class="form-label" for="account-role">Rol *</label>
+                <select id="account-role" class="form-select" required disabled></select>
+              </div>
+              <div class="col-12"><h3 class="h6 border-top pt-3 mb-0">Cambiar contraseña</h3></div>
+              <div class="col-12 col-md-6">
+                <label class="form-label" for="account-password">Nueva contraseña (opcional)</label>
+                <input id="account-password" class="form-control" type="password" minlength="8" maxlength="128" autocomplete="new-password" disabled>
+              </div>
+              <div class="col-12 col-md-6">
+                <label id="account-password-confirmation-label" class="form-label" for="account-password-confirmation">Confirmar nueva contraseña</label>
+                <input id="account-password-confirmation" class="form-control" type="password" maxlength="128" autocomplete="new-password" disabled>
+              </div>
+              <div class="col-12 d-flex flex-wrap gap-2">
+                <button class="btn btn-primary" type="submit">Guardar cambios</button>
+                <button id="user-profile-cancel" class="btn btn-outline-secondary" type="button">Cancelar edición</button>
+              </div>
+            </form>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button id="user-profile-edit" class="btn btn-primary hidden" type="button">Editar perfil</button>
+          <button class="btn btn-outline-secondary" type="button" data-bs-dismiss="modal">Cerrar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="group-detail" tabindex="-1" aria-labelledby="group-detail-title" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 id="group-detail-title" class="modal-title fs-5 text-break" tabindex="-1"></h2>
+          <button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body">
+          <div id="group-detail-message" class="alert d-none mb-3" role="status" aria-live="polite"></div>
+          <p id="group-detail-supervisor" class="text-secondary small text-break"></p>
+          <h3 class="h6">Integrantes</h3><ul id="group-detail-members" class="text-break"></ul>
+          <form id="group-members-form" class="mb-4 hidden">
+            <fieldset id="group-members-editor" disabled>
+              <div class="row g-2 align-items-end mb-3">
+                <div class="col-sm">
+                  <label class="form-label" for="group-member-select">Añadir integrante</label>
+                  <select id="group-member-select" class="form-select" disabled></select>
+                </div>
+                <div class="col-sm-auto"><button id="group-member-add" class="btn btn-outline-primary" type="button" disabled>Agregar</button></div>
+              </div>
+              <ul id="group-members" class="list-group mb-3"></ul>
+            </fieldset>
+            <button id="group-members-save" class="btn btn-primary" type="submit" disabled>Guardar integrantes</button>
+          </form>
+          <h3 class="h6">Estados</h3><div id="states-list" class="list-group mb-4"></div>
+          <form id="state-form" class="row g-3 hidden">
+            <input id="state-id" type="hidden">
+            <div class="col-md-9"><label for="state-name" class="form-label">Nombre del estado *</label><input id="state-name" class="form-control" maxlength="80" required></div>
+            <div class="col-md-3"><label for="state-color" class="form-label">Color *</label><input id="state-color" class="form-control form-control-color" type="color" value="#6c757d" required></div>
+            <div class="col-12 d-flex flex-wrap gap-2"><button class="btn btn-primary" type="submit">Guardar estado</button><button id="state-cancel" class="btn btn-outline-secondary" type="button">Limpiar</button></div>
+          </form>
+          <form id="state-delete-form" class="border rounded p-3 mt-3 hidden">
+            <p id="state-delete-title" class="mb-2"></p>
+            <label for="state-destination" class="form-label">Estado de destino *</label><select id="state-destination" class="form-select mb-3" required></select>
+            <button class="btn btn-danger" type="submit">Eliminar estado</button><button id="state-delete-cancel" class="btn btn-outline-secondary" type="button">Cancelar</button>
+          </form>
+        </div>
+        <div class="modal-footer"><button id="group-detail-close" class="btn btn-secondary" type="button" data-bs-dismiss="modal">Cerrar</button></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="task-detail" tabindex="-1" aria-labelledby="task-detail-title" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 id="task-detail-title" class="modal-title fs-5 text-break" tabindex="-1"></h2>
+          <button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body">
+          <div id="task-detail-message" class="alert d-none mb-3" role="status" aria-live="polite"></div>
+          <p id="task-detail-info" class="text-secondary small text-break"></p>
+          <p id="task-detail-description" class="text-break" style="white-space: pre-wrap"></p>
+          <form id="task-status-form" class="row g-2 mb-4 hidden">
+            <div class="col-sm-8"><label for="task-detail-state" class="form-label">Estado *</label><select id="task-detail-state" class="form-select" required></select></div>
+            <div class="col-sm-4 d-flex align-items-end"><button class="btn btn-outline-primary" type="submit">Cambiar estado</button></div>
+          </form>
+          <h3 class="h6">Notas</h3><div id="notes-list" class="mb-4"></div>
+          <form id="note-form" class="row g-3 hidden">
+            <input id="note-id" type="hidden">
+            <div class="col-12"><label for="note-title" class="form-label">Título de la nota *</label><input id="note-title" class="form-control" maxlength="140" required></div>
+            <div class="col-12"><label for="note-description" class="form-label">Descripción *</label><textarea id="note-description" class="form-control" maxlength="4000" rows="3" required></textarea></div>
+            <div class="col-12 d-flex gap-2"><button class="btn btn-primary" type="submit">Guardar nota</button><button id="note-cancel" class="btn btn-outline-secondary" type="button">Limpiar</button></div>
+          </form>
+        </div>
+        <div class="modal-footer"><button class="btn btn-secondary" type="button" data-bs-dismiss="modal">Cerrar</button></div>
+      </div>
+    </div>
+  </div>
 
   <footer class="bg-white border-top py-3">
     <nav class="container d-flex flex-wrap justify-content-center gap-4 small" aria-label="Información del proyecto">
@@ -273,6 +644,12 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous" defer></script>
-  <script src="/app.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/tom-select@2.4.3/dist/js/tom-select.complete.min.js" integrity="sha384-A4TlP4zHVPP9oVIQ8pTVaV6MhvBkDx1sRpmEUfAlO5e7xpodrdr6uNmUV7alXAWW" crossorigin="anonymous" defer></script>
+  <script src="/tablas.js?v=99df0e8025bc" defer></script>
+  <script src="/trabajo.js?v=6b45146e147f" defer></script>
+  <script src="/dialogos.js" defer></script>
+  <script src="/catalogos.js?v=ea135ed95b88" defer></script>
+  <script src="/inventario.js?v=b4ae0bb95687" defer></script>
+  <script src="/app.js?v=92c08f646c90" defer></script>
 </body>
 </html>

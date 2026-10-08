@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using back.Data;
@@ -11,9 +12,11 @@ using back.Data;
 namespace back.Migrations
 {
     [DbContext(typeof(InventoryDbContext))]
-    partial class InventoryDbContextModelSnapshot : ModelSnapshot
+    [Migration("20261006215602_InventarioPorBodegaBorradoReal")]
+    partial class InventarioPorBodegaBorradoReal
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -112,6 +115,9 @@ namespace back.Migrations
                     b.Property<bool>("Activa")
                         .HasColumnType("boolean");
 
+                    b.Property<int>("BodegaId")
+                        .HasColumnType("integer");
+
                     b.Property<int>("EmpresaId")
                         .HasColumnType("integer");
 
@@ -127,7 +133,7 @@ namespace back.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("EmpresaId", "NombreNormalizado")
+                    b.HasIndex("EmpresaId", "BodegaId", "NombreNormalizado")
                         .IsUnique();
 
                     b.ToTable("CategoriaInventario", (string)null);
@@ -179,9 +185,6 @@ namespace back.Migrations
                     b.Property<int>("EmpresaId")
                         .HasColumnType("integer");
 
-                    b.Property<bool>("EsPredeterminado")
-                        .HasColumnType("boolean");
-
                     b.Property<int>("GrupoId")
                         .HasColumnType("integer");
 
@@ -199,10 +202,6 @@ namespace back.Migrations
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("EmpresaId", "GrupoId")
-                        .IsUnique()
-                        .HasFilter("\"EsPredeterminado\"");
 
                     b.HasIndex("EmpresaId", "GrupoId", "NombreNormalizado")
                         .IsUnique();
@@ -537,7 +536,7 @@ namespace back.Migrations
                     b.Property<int>("BodegaId")
                         .HasColumnType("integer");
 
-                    b.Property<int>("CategoriaId")
+                    b.Property<int?>("CategoriaId")
                         .HasColumnType("integer");
 
                     b.Property<string>("Code")
@@ -588,7 +587,7 @@ namespace back.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("EmpresaId", "CategoriaId");
+                    b.HasIndex("EmpresaId", "BodegaId", "CategoriaId");
 
                     b.HasIndex("EmpresaId", "BodegaId", "Code")
                         .IsUnique();
@@ -871,6 +870,13 @@ namespace back.Migrations
                         .HasForeignKey("EmpresaId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.HasOne("back.Models.BodegaInventario", null)
+                        .WithMany()
+                        .HasForeignKey("EmpresaId", "BodegaId")
+                        .HasPrincipalKey("EmpresaId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("back.Models.EstadoTarea", b =>
@@ -1021,10 +1027,9 @@ namespace back.Migrations
 
                     b.HasOne("back.Models.CategoriaInventario", null)
                         .WithMany()
-                        .HasForeignKey("EmpresaId", "CategoriaId")
-                        .HasPrincipalKey("EmpresaId", "Id")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .HasForeignKey("EmpresaId", "BodegaId", "CategoriaId")
+                        .HasPrincipalKey("EmpresaId", "BodegaId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("back.Models.ProductoInventarioHistorico", b =>

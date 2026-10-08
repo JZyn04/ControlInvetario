@@ -48,6 +48,7 @@ public sealed class UsuariosController(InventoryDbContext database, CurrentUsuar
             EmpresaId = current.EmpresaId,
             Correo = request.Correo.Trim(),
             CorreoNormalizado = email,
+            Telefono = string.IsNullOrWhiteSpace(request.Telefono) ? null : request.Telefono.Trim(),
             Rol = rol,
             EsPrincipal = rol.EsAdministrador
         };
@@ -84,14 +85,10 @@ public sealed class UsuariosController(InventoryDbContext database, CurrentUsuar
             item.CorreoNormalizado == email, cancellationToken))
             return Problem(statusCode: 409, title: "Ese correo ya tiene una cuenta en esta empresa.");
 
-        var cambianCredenciales = email != usuario.CorreoNormalizado || !string.IsNullOrEmpty(request.Contrasenia);
-        usuario.Correo = request.Correo.Trim();
-        usuario.CorreoNormalizado = email;
+        var cambianCredenciales = PerfilUsuario.Actualizar(usuario, request.Correo, request.Telefono, request.Contrasenia, hasher);
         usuario.Rol = rol;
         usuario.RolId = rol.Id;
         usuario.EsPrincipal = rol.EsAdministrador;
-        if (!string.IsNullOrEmpty(request.Contrasenia))
-            usuario.ContraseniaHash = hasher.HashPassword(usuario, request.Contrasenia);
         try
         {
             await database.SaveChangesAsync(cancellationToken);
@@ -116,6 +113,19 @@ public sealed class UsuariosController(InventoryDbContext database, CurrentUsuar
         if (usuario is null) return NotFound();
         if (await EsUltimoAdministrador(usuario, cancellationToken))
             return Problem(statusCode: 409, title: "La empresa debe conservar al menos un administrador.");
+        // Conserva el trabajo y la autoría histórica al borrar una cuenta.
+        foreach (var tarea in await database.Tareas.Where(item => item.EmpresaId == current.EmpresaId && item.AsignadoAId == id).ToListAsync(cancellationToken))
+        {
+            tarea.AsignadoAId = null; tarea.AsignadoA = null;
+            tarea.PermitirAutoasignacion = false; tarea.Version++; tarea.ActualizadaEnUtc = DateTime.UtcNow;
+        }
+        foreach (var grupo in await database.Grupos.Where(item => item.EmpresaId == current.EmpresaId && item.SupervisorId == id).ToListAsync(cancellationToken))
+        { grupo.SupervisorId = null; grupo.Supervisor = null; }
+        foreach (var nota in await database.NotasTareas.Where(item => item.EmpresaId == current.EmpresaId && item.AutorId == id).ToListAsync(cancellationToken))
+        { nota.AutorId = null; nota.Autor = null; }
+        database.MiembrosGrupos.RemoveRange(await database.MiembrosGrupos.Where(item => item.EmpresaId == current.EmpresaId && item.UsuarioId == id).ToListAsync(cancellationToken));
+        foreach (var prestamo in await database.PrestamosInventario.Where(p => p.EmpresaId == current.EmpresaId && p.DestinatarioUsuarioId == id).ToListAsync(cancellationToken))
+            prestamo.DestinatarioUsuarioId = null;
         database.Usuarios.Remove(usuario);
         await database.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
@@ -148,4 +158,12 @@ public sealed class UsuariosController(InventoryDbContext database, CurrentUsuar
     private async Task<bool> EsUltimoAdministrador(Usuario usuario, CancellationToken cancellationToken) =>
         usuario.Rol.EsAdministrador && await database.Usuarios.CountAsync(item =>
             item.EmpresaId == current.EmpresaId && item.Rol.CodigoSistema == Rol.Administrador, cancellationToken) <= 1;
+
+    [HttpGet("{id:int}")]
+    public async Task<ActionResult<UsuarioResponse>> Profile(int id, CancellationToken cancellationToken)
+    {
+        var usuario = await database.Usuarios.AsNoTracking().Include(item => item.Rol)
+            .SingleOrDefaultAsync(item => item.Id == id && item.EmpresaId == current.EmpresaId, cancellationToken);
+        return usuario is null ? NotFound() : Ok(UsuarioResponse.From(usuario));
+    }
 }

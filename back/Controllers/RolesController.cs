@@ -34,8 +34,8 @@ public sealed class RolesController(InventoryDbContext database, CurrentUsuario 
 
     private async Task<ActionResult<RolResponse>> Save(int? id, GuardarRolRequest request, CancellationToken cancellationToken)
     {
-        if (!Permisos.TryParse(request.Permisos, out var permisos))
-            return Problem(statusCode: 400, title: "Los permisos no son válidos. Para modificar inventario también debés permitir verlo.");
+        if (!Permisos.TryParse(request.Permisos, out var permisos, out var tareas, out var grupos))
+            return Problem(statusCode: 400, title: "Los permisos no son válidos. También debés permitir ver la sección correspondiente.");
         await using var transaction = await administracion.Begin(cancellationToken);
         if (transaction is null) return Forbid();
         var rol = id is null ? new Rol { EmpresaId = current.EmpresaId } : await database.Roles
@@ -45,6 +45,8 @@ public sealed class RolesController(InventoryDbContext database, CurrentUsuario 
         rol.Nombre = request.Nombre.Trim();
         rol.NombreNormalizado = rol.Nombre.ToUpperInvariant();
         rol.Permisos = permisos;
+        rol.PermisosTareas = tareas;
+        rol.PermisosGrupos = grupos;
         if (id is null) database.Roles.Add(rol);
         try { await database.SaveChangesAsync(cancellationToken); }
         catch (DbUpdateException error) when (error.InnerException is PostgresException { SqlState: "23505" })

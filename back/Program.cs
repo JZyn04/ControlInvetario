@@ -12,6 +12,11 @@ using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// La vista de desarrollo puede usar una copia aislada sin cambiar User Secrets ni la conexión de Cloud Run.
+// Las variables del proceso conservan prioridad (incluidas las del ejecutable de pruebas).
+if (builder.Environment.IsDevelopment())
+    builder.Configuration.AddJsonFile("appsettings.Local.json", optional: true, reloadOnChange: false).AddEnvironmentVariables();
+
 var configuredConnection = builder.Configuration.GetConnectionString("Inventory")
     ?? builder.Configuration["DATABASE_URL"];
 

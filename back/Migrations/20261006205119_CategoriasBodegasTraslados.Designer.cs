@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using back.Data;
@@ -11,9 +12,11 @@ using back.Data;
 namespace back.Migrations
 {
     [DbContext(typeof(InventoryDbContext))]
-    partial class InventoryDbContextModelSnapshot : ModelSnapshot
+    [Migration("20261006205119_CategoriasBodegasTraslados")]
+    partial class CategoriasBodegasTraslados
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -78,27 +81,6 @@ namespace back.Migrations
                         .IsUnique();
 
                     b.ToTable("BodegaInventario", (string)null);
-                });
-
-            modelBuilder.Entity("back.Models.BodegaInventarioHistorica", b =>
-                {
-                    b.Property<int>("EmpresaId")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("Id")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTime?>("EliminadaEnUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Nombre")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.HasKey("EmpresaId", "Id");
-
-                    b.ToTable("BodegaInventarioHistorica", (string)null);
                 });
 
             modelBuilder.Entity("back.Models.CategoriaInventario", b =>
@@ -179,9 +161,6 @@ namespace back.Migrations
                     b.Property<int>("EmpresaId")
                         .HasColumnType("integer");
 
-                    b.Property<bool>("EsPredeterminado")
-                        .HasColumnType("boolean");
-
                     b.Property<int>("GrupoId")
                         .HasColumnType("integer");
 
@@ -199,10 +178,6 @@ namespace back.Migrations
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("EmpresaId", "GrupoId")
-                        .IsUnique()
-                        .HasFilter("\"EsPredeterminado\"");
 
                     b.HasIndex("EmpresaId", "GrupoId", "NombreNormalizado")
                         .IsUnique();
@@ -393,12 +368,12 @@ namespace back.Migrations
 
                     b.HasIndex("EmpresaId", "BodegaId");
 
-                    b.HasIndex("EmpresaId", "PrestamoId");
-
                     b.HasIndex("EmpresaId", "SolicitudId")
                         .IsUnique();
 
                     b.HasIndex("EmpresaId", "ProductoId", "Id");
+
+                    b.HasIndex("EmpresaId", "ProductoId", "PrestamoId");
 
                     b.ToTable("MovimientoInventario", null, t =>
                         {
@@ -534,10 +509,7 @@ namespace back.Migrations
                     b.Property<bool>("AllowsFractions")
                         .HasColumnType("boolean");
 
-                    b.Property<int>("BodegaId")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("CategoriaId")
+                    b.Property<int?>("CategoriaId")
                         .HasColumnType("integer");
 
                     b.Property<string>("Code")
@@ -590,63 +562,13 @@ namespace back.Migrations
 
                     b.HasIndex("EmpresaId", "CategoriaId");
 
-                    b.HasIndex("EmpresaId", "BodegaId", "Code")
+                    b.HasIndex("EmpresaId", "Code")
                         .IsUnique();
 
                     b.ToTable("products", null, t =>
                         {
                             t.HasCheckConstraint("CK_products_Cantidades", "\"Quantity\" >= 0 AND \"MinimumStock\" >= 0 AND (\"AllowsFractions\" OR (trunc(\"Quantity\") = \"Quantity\" AND trunc(\"MinimumStock\") = \"MinimumStock\"))");
                         });
-                });
-
-            modelBuilder.Entity("back.Models.ProductoInventarioHistorico", b =>
-                {
-                    b.Property<int>("EmpresaId")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("Id")
-                        .HasColumnType("integer");
-
-                    b.Property<bool>("AllowsFractions")
-                        .HasColumnType("boolean");
-
-                    b.Property<int>("BodegaId")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Code")
-                        .IsRequired()
-                        .HasMaxLength(40)
-                        .HasColumnType("character varying(40)");
-
-                    b.Property<DateTime?>("EliminadoEnUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<decimal>("MinimumStock")
-                        .HasPrecision(15, 3)
-                        .HasColumnType("numeric(15,3)");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(120)
-                        .HasColumnType("character varying(120)");
-
-                    b.Property<int?>("OrigenCompartidoId")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Unit")
-                        .IsRequired()
-                        .HasMaxLength(30)
-                        .HasColumnType("character varying(30)");
-
-                    b.Property<decimal>("UnitPrice")
-                        .HasPrecision(12, 2)
-                        .HasColumnType("numeric(12,2)");
-
-                    b.HasKey("EmpresaId", "Id");
-
-                    b.HasIndex("EmpresaId", "BodegaId");
-
-                    b.ToTable("ProductoInventarioHistorico", (string)null);
                 });
 
             modelBuilder.Entity("back.Models.RegistroAuditoria", b =>
@@ -855,15 +777,6 @@ namespace back.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("back.Models.BodegaInventarioHistorica", b =>
-                {
-                    b.HasOne("back.Models.Empresa", null)
-                        .WithMany()
-                        .HasForeignKey("EmpresaId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
             modelBuilder.Entity("back.Models.CategoriaInventario", b =>
                 {
                     b.HasOne("back.Models.Empresa", null)
@@ -896,9 +809,9 @@ namespace back.Migrations
 
                     b.HasOne("back.Models.Product", null)
                         .WithMany()
-                        .HasForeignKey("EmpresaId", "ProductoId", "BodegaId")
-                        .HasPrincipalKey("EmpresaId", "Id", "BodegaId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .HasForeignKey("EmpresaId", "ProductoId")
+                        .HasPrincipalKey("EmpresaId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
 
@@ -942,23 +855,25 @@ namespace back.Migrations
 
             modelBuilder.Entity("back.Models.MovimientoInventario", b =>
                 {
-                    b.HasOne("back.Models.BodegaInventarioHistorica", null)
+                    b.HasOne("back.Models.BodegaInventario", null)
                         .WithMany()
                         .HasForeignKey("EmpresaId", "BodegaId")
+                        .HasPrincipalKey("EmpresaId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("back.Models.Product", null)
+                        .WithMany()
+                        .HasForeignKey("EmpresaId", "ProductoId")
+                        .HasPrincipalKey("EmpresaId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("back.Models.PrestamoInventario", null)
                         .WithMany()
-                        .HasForeignKey("EmpresaId", "PrestamoId")
-                        .HasPrincipalKey("EmpresaId", "Id")
+                        .HasForeignKey("EmpresaId", "ProductoId", "PrestamoId")
+                        .HasPrincipalKey("EmpresaId", "ProductoId", "Id")
                         .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("back.Models.ProductoInventarioHistorico", null)
-                        .WithMany()
-                        .HasForeignKey("EmpresaId", "ProductoId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
                 });
 
             modelBuilder.Entity("back.Models.NotaTarea", b =>
@@ -983,9 +898,10 @@ namespace back.Migrations
 
             modelBuilder.Entity("back.Models.PrestamoInventario", b =>
                 {
-                    b.HasOne("back.Models.BodegaInventarioHistorica", null)
+                    b.HasOne("back.Models.BodegaInventario", null)
                         .WithMany()
                         .HasForeignKey("EmpresaId", "BodegaOrigenId")
+                        .HasPrincipalKey("EmpresaId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
@@ -995,9 +911,10 @@ namespace back.Migrations
                         .HasPrincipalKey("EmpresaId", "Id")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.HasOne("back.Models.ProductoInventarioHistorico", "Producto")
+                    b.HasOne("back.Models.Product", "Producto")
                         .WithMany()
                         .HasForeignKey("EmpresaId", "ProductoId")
+                        .HasPrincipalKey("EmpresaId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
@@ -1012,28 +929,11 @@ namespace back.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("back.Models.BodegaInventario", null)
-                        .WithMany()
-                        .HasForeignKey("EmpresaId", "BodegaId")
-                        .HasPrincipalKey("EmpresaId", "Id")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
                     b.HasOne("back.Models.CategoriaInventario", null)
                         .WithMany()
                         .HasForeignKey("EmpresaId", "CategoriaId")
                         .HasPrincipalKey("EmpresaId", "Id")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("back.Models.ProductoInventarioHistorico", b =>
-                {
-                    b.HasOne("back.Models.BodegaInventarioHistorica", null)
-                        .WithMany()
-                        .HasForeignKey("EmpresaId", "BodegaId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("back.Models.RegistroAuditoria", b =>
